@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,6 @@ type Loft = {
 };
 
 export default function LoftsPage() {
-  // ─── Hooks: must always be at top, in same order ───────────────────────────
   const { status } = useSession();
   const router = useRouter();
 
@@ -20,41 +20,29 @@ export default function LoftsPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Redirect if not authenticated
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/auth");
-    }
+    if (status === "unauthenticated") router.replace("/auth");
   }, [status, router]);
 
-  // Fetch lofts once authenticated
   useEffect(() => {
     async function fetchLofts() {
       setMessage("");
-
       try {
         const res = await fetch("/api/lofts");
         const text = await res.text();
-
         if (!res.ok) {
           setMessage(`Error loading lofts: ${res.status} ${text}`);
           return;
         }
-
-        const data = JSON.parse(text) as Loft[];
-        setLofts(data);
+        setLofts(JSON.parse(text) as Loft[]);
       } catch (err) {
         console.error(err);
         setMessage("Failed to load lofts.");
       }
     }
 
-    if (status === "authenticated") {
-      fetchLofts();
-    }
+    if (status === "authenticated") fetchLofts();
   }, [status]);
-
-  // ─── Now we can safely do early returns (no hooks below here) ───────────────
 
   if (status === "loading") {
     return (
@@ -77,7 +65,6 @@ export default function LoftsPage() {
       });
 
       const text = await res.text();
-
       if (!res.ok) {
         setMessage(`Error: ${res.status} ${text}`);
         return;
@@ -86,20 +73,9 @@ export default function LoftsPage() {
       setMessage("Loft created!");
       setName("");
 
-      // Re-fetch lofts
-      try {
-        const res2 = await fetch("/api/lofts");
-        const text2 = await res2.text();
-        if (!res2.ok) {
-          setMessage(`Error loading lofts: ${res2.status} ${text2}`);
-          return;
-        }
-        const data2 = JSON.parse(text2) as Loft[];
-        setLofts(data2);
-      } catch (err) {
-        console.error(err);
-        setMessage("Loft created, but failed to refresh list.");
-      }
+      const res2 = await fetch("/api/lofts");
+      const text2 = await res2.text();
+      if (res2.ok) setLofts(JSON.parse(text2) as Loft[]);
     } catch (err) {
       console.error(err);
       setMessage("Failed to create loft.");
@@ -113,7 +89,6 @@ export default function LoftsPage() {
       <h1 className="text-2xl font-semibold text-slate-50">My Lofts</h1>
 
       <div className="grid md:grid-cols-[1.1fr_1.2fr] gap-6">
-        {/* Create Loft Form */}
         <form
           onSubmit={handleSubmit}
           className="space-y-3 bg-slate-900/80 border border-slate-700 rounded-2xl p-4"
@@ -149,7 +124,6 @@ export default function LoftsPage() {
           )}
         </form>
 
-        {/* Lofts List */}
         <section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
           <h2 className="text-sm font-semibold mb-3 text-slate-100">
             Existing lofts
@@ -160,14 +134,16 @@ export default function LoftsPage() {
           ) : (
             <ul className="space-y-2">
               {lofts.map((loft) => (
-                <li
-                  key={loft.id}
-                  className="border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 flex justify-between items-center"
-                >
-                  <span className="text-sm text-slate-100">{loft.name}</span>
-                  <span className="text-[10px] text-slate-500">
-                    {new Date(loft.createdAt).toLocaleString()}
-                  </span>
+                <li key={loft.id}>
+                  <Link
+                    href={`/lofts/${loft.id}`}
+                    className="border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 flex justify-between items-center hover:border-sky-500 hover:text-sky-300 transition"
+                  >
+                    <span className="text-sm text-slate-100">{loft.name}</span>
+                    <span className="text-[10px] text-slate-500">
+                      {new Date(loft.createdAt).toLocaleDateString()}
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>

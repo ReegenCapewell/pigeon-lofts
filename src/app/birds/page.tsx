@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -18,7 +19,6 @@ type Bird = {
 };
 
 export default function BirdsPage() {
-  // ─── Hooks: must always be at top, in same order ───────────────────────────
   const { status } = useSession();
   const router = useRouter();
 
@@ -30,18 +30,13 @@ export default function BirdsPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Redirect if not authenticated
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/auth");
-    }
+    if (status === "unauthenticated") router.replace("/auth");
   }, [status, router]);
 
-  // Fetch lofts and birds once authenticated
   useEffect(() => {
     async function fetchLoftsAndBirds() {
       setMessage("");
-
       try {
         const [loftsRes, birdsRes] = await Promise.all([
           fetch("/api/lofts"),
@@ -60,23 +55,16 @@ export default function BirdsPage() {
           return;
         }
 
-        const loftsData = JSON.parse(loftsText) as Loft[];
-        const birdsData = JSON.parse(birdsText) as Bird[];
-
-        setLofts(loftsData);
-        setBirds(birdsData);
+        setLofts(JSON.parse(loftsText) as Loft[]);
+        setBirds(JSON.parse(birdsText) as Bird[]);
       } catch (err) {
         console.error(err);
         setMessage("Failed to load birds/lofts.");
       }
     }
 
-    if (status === "authenticated") {
-      fetchLoftsAndBirds();
-    }
+    if (status === "authenticated") fetchLoftsAndBirds();
   }, [status]);
-
-  // ─── Early return after hooks: safe now ────────────────────────────────────
 
   if (status === "loading") {
     return (
@@ -84,6 +72,17 @@ export default function BirdsPage() {
         <p className="text-sm text-slate-300">Checking your session...</p>
       </main>
     );
+  }
+
+  async function refresh() {
+    const [loftsRes, birdsRes] = await Promise.all([
+      fetch("/api/lofts"),
+      fetch("/api/birds"),
+    ]);
+    const loftsText = await loftsRes.text();
+    const birdsText = await birdsRes.text();
+    if (loftsRes.ok) setLofts(JSON.parse(loftsText) as Loft[]);
+    if (birdsRes.ok) setBirds(JSON.parse(birdsText) as Bird[]);
   }
 
   async function handleCreateBird(e: React.FormEvent) {
@@ -103,7 +102,6 @@ export default function BirdsPage() {
       });
 
       const text = await res.text();
-
       if (!res.ok) {
         setMessage(`Error creating bird: ${res.status} ${text}`);
         return;
@@ -113,35 +111,7 @@ export default function BirdsPage() {
       setRing("");
       setName("");
       setSelectedLoftId("");
-
-      // Re-fetch after creation
-      try {
-        const [loftsRes, birdsRes] = await Promise.all([
-          fetch("/api/lofts"),
-          fetch("/api/birds"),
-        ]);
-
-        const loftsText = await loftsRes.text();
-        const birdsText = await birdsRes.text();
-
-        if (!loftsRes.ok) {
-          setMessage(`Error loading lofts: ${loftsRes.status} ${loftsText}`);
-          return;
-        }
-        if (!birdsRes.ok) {
-          setMessage(`Error loading birds: ${birdsRes.status} ${birdsText}`);
-          return;
-        }
-
-        const loftsData = JSON.parse(loftsText) as Loft[];
-        const birdsData = JSON.parse(birdsText) as Bird[];
-
-        setLofts(loftsData);
-        setBirds(birdsData);
-      } catch (err) {
-        console.error(err);
-        setMessage("Bird created, but failed to refresh list.");
-      }
+      await refresh();
     } catch (err) {
       console.error(err);
       setMessage("Failed to create bird.");
@@ -152,52 +122,20 @@ export default function BirdsPage() {
 
   async function handleAssign(birdId: string, newLoftId: string | "") {
     setMessage("");
-
     try {
       const res = await fetch("/api/birds/assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          birdId,
-          loftId: newLoftId || null,
-        }),
+        body: JSON.stringify({ birdId, loftId: newLoftId || null }),
       });
 
       const text = await res.text();
-
       if (!res.ok) {
         setMessage(`Error assigning bird: ${res.status} ${text}`);
         return;
       }
 
-      // Refresh birds after assignment
-      try {
-        const [loftsRes, birdsRes] = await Promise.all([
-          fetch("/api/lofts"),
-          fetch("/api/birds"),
-        ]);
-
-        const loftsText = await loftsRes.text();
-        const birdsText = await birdsRes.text();
-
-        if (!loftsRes.ok) {
-          setMessage(`Error loading lofts: ${loftsRes.status} ${loftsText}`);
-          return;
-        }
-        if (!birdsRes.ok) {
-          setMessage(`Error loading birds: ${birdsRes.status} ${birdsText}`);
-          return;
-        }
-
-        const loftsData = JSON.parse(loftsText) as Loft[];
-        const birdsData = JSON.parse(birdsText) as Bird[];
-
-        setLofts(loftsData);
-        setBirds(birdsData);
-      } catch (err) {
-        console.error(err);
-        setMessage("Bird assigned, but failed to refresh list.");
-      }
+      await refresh();
     } catch (err) {
       console.error(err);
       setMessage("Failed to assign bird.");
@@ -209,7 +147,6 @@ export default function BirdsPage() {
       <h1 className="text-2xl font-semibold text-slate-50">My Birds</h1>
 
       <div className="grid md:grid-cols-[1.1fr_1.2fr] gap-6">
-        {/* Create bird form */}
         <form
           onSubmit={handleCreateBird}
           className="space-y-3 bg-slate-900/80 border border-slate-700 rounded-2xl p-4"
@@ -279,7 +216,6 @@ export default function BirdsPage() {
           )}
         </form>
 
-        {/* Birds list */}
         <section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
           <h2 className="text-sm font-semibold mb-3 text-slate-100">
             Existing birds
@@ -294,21 +230,21 @@ export default function BirdsPage() {
                   key={bird.id}
                   className="border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 flex flex-col gap-2"
                 >
-                  <div className="flex justify-between items-center">
-                    <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <Link
+                      href={`/birds/${bird.id}`}
+                      className="flex-1 hover:text-sky-300 transition"
+                    >
                       <p className="text-sm text-slate-100">
                         {bird.ring}
                         {bird.name ? (
-                          <span className="text-slate-400">
-                            {" "}
-                            – {bird.name}
-                          </span>
+                          <span className="text-slate-400"> – {bird.name}</span>
                         ) : null}
                       </p>
                       <p className="text-[11px] text-slate-500">
                         {bird.loft ? `Loft: ${bird.loft.name}` : "Unassigned"}
                       </p>
-                    </div>
+                    </Link>
                   </div>
 
                   <div>
@@ -318,9 +254,7 @@ export default function BirdsPage() {
                     <select
                       className="border border-slate-700 bg-slate-950 rounded-lg px-3 py-1 text-xs outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                       value={bird.loftId ?? ""}
-                      onChange={(e) =>
-                        handleAssign(bird.id, e.target.value || "")
-                      }
+                      onChange={(e) => handleAssign(bird.id, e.target.value)}
                     >
                       <option value="">Unassigned</option>
                       {lofts.map((loft) => (
