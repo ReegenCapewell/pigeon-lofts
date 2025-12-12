@@ -33,24 +33,35 @@ export default async function BirdDashboardPage({
 
   return (
     <main className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-50">
-            {bird.ring}
-            {bird.name ? (
-              <span className="text-slate-400"> – {bird.name}</span>
-            ) : null}
-          </h1>
-          <p className="text-sm text-slate-300">Bird dashboard / profile</p>
-        </div>
+      <div className="space-y-2">
+        <nav className="text-xs text-slate-400">
+          <Link href="/" className="hover:text-sky-300">Dashboard</Link>
+          <span className="mx-2 text-slate-600">/</span>
+          <Link href="/birds" className="hover:text-sky-300">Birds</Link>
+          <span className="mx-2 text-slate-600">/</span>
+          <span className="text-slate-200">{bird.ring}</span>
+        </nav>
 
-        <Link
-          href="/birds"
-          className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
-        >
-          Back to birds
-        </Link>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-50">
+              {bird.ring}
+              {bird.name ? (
+                <span className="text-slate-400"> – {bird.name}</span>
+              ) : null}
+            </h1>
+            <p className="text-sm text-slate-300">Bird dashboard / profile</p>
+          </div>
+
+          <Link
+            href="/birds"
+            className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
+          >
+            Back to birds
+          </Link>
+        </div>
       </div>
+
 
       <section className="grid md:grid-cols-3 gap-4">
         <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
