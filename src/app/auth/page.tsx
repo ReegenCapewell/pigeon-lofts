@@ -42,7 +42,7 @@ export default function AuthPage() {
         });
         if (res?.ok) {
           setMessage("Logged in! Redirecting...");
-          router.push("/lofts"); // ⬅ redirect to lofts page
+          router.push("/"); // ⬅ redirect to dashboard page
         } else {
           setMessage("Invalid email or password.");
         }
