@@ -1,275 +1,400 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
-type Loft = {
-  id: string;
-  name: string;
-};
+type Loft = { id: string; name: string };
 
 type Bird = {
   id: string;
   ring: string;
   name: string | null;
   loftId: string | null;
-  loft?: Loft | null;
+  createdAt?: string;
+  loft?: { id: string; name: string } | null;
 };
 
 export default function BirdsPage() {
-  const { status } = useSession();
-  const router = useRouter();
-
   const [birds, setBirds] = useState<Bird[]>([]);
   const [lofts, setLofts] = useState<Loft[]>([]);
-  const [ring, setRing] = useState("");
-  const [name, setName] = useState("");
-  const [selectedLoftId, setSelectedLoftId] = useState<string | "">("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (status === "unauthenticated") router.replace("/auth");
-  }, [status, router]);
+  const [query, setQuery] = useState("");
+  const [loftFilter, setLoftFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"newest" | "ring">("newest");
 
-  useEffect(() => {
-    async function fetchLoftsAndBirds() {
-      setMessage("");
-      try {
-        const [loftsRes, birdsRes] = await Promise.all([
-          fetch("/api/lofts"),
-          fetch("/api/birds"),
-        ]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newRing, setNewRing] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newLoftId, setNewLoftId] = useState<string>("none");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-        const loftsText = await loftsRes.text();
-        const birdsText = await birdsRes.text();
-
-        if (!loftsRes.ok) {
-          setMessage(`Error loading lofts: ${loftsRes.status} ${loftsText}`);
-          return;
-        }
-        if (!birdsRes.ok) {
-          setMessage(`Error loading birds: ${birdsRes.status} ${birdsText}`);
-          return;
-        }
-
-        setLofts(JSON.parse(loftsText) as Loft[]);
-        setBirds(JSON.parse(birdsText) as Bird[]);
-      } catch (err) {
-        console.error(err);
-        setMessage("Failed to load birds/lofts.");
-      }
-    }
-
-    if (status === "authenticated") fetchLoftsAndBirds();
-  }, [status]);
-
-  if (status === "loading") {
-    return (
-      <main className="space-y-6">
-        <p className="text-sm text-slate-300">Checking your session...</p>
-      </main>
-    );
-  }
-
-  async function refresh() {
-    const [loftsRes, birdsRes] = await Promise.all([
-      fetch("/api/lofts"),
-      fetch("/api/birds"),
-    ]);
-    const loftsText = await loftsRes.text();
-    const birdsText = await birdsRes.text();
-    if (loftsRes.ok) setLofts(JSON.parse(loftsText) as Loft[]);
-    if (birdsRes.ok) setBirds(JSON.parse(birdsText) as Bird[]);
-  }
-
-  async function handleCreateBird(e: React.FormEvent) {
-    e.preventDefault();
-    setMessage("");
-    setLoading(true);
-
+  async function load() {
     try {
-      const res = await fetch("/api/birds", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ring,
-          name: name || null,
-          loftId: selectedLoftId || null,
-        }),
-      });
+      setLoading(true);
 
-      const text = await res.text();
-      if (!res.ok) {
-        setMessage(`Error creating bird: ${res.status} ${text}`);
-        return;
-      }
+      const [birdsRes, loftsRes] = await Promise.all([
+        fetch("/api/birds", { cache: "no-store" }),
+        fetch("/api/lofts", { cache: "no-store" }),
+      ]);
 
-      setMessage("Bird created!");
-      setRing("");
-      setName("");
-      setSelectedLoftId("");
-      await refresh();
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to create bird.");
+      const birdsData = await birdsRes.json();
+      const loftsData = await loftsRes.json();
+
+      const birdsList: Bird[] = Array.isArray(birdsData)
+        ? birdsData
+        : birdsData.birds ?? [];
+
+      const loftsList: Loft[] = Array.isArray(loftsData)
+        ? loftsData
+        : loftsData.lofts ?? [];
+
+      setBirds(birdsList);
+      setLofts(loftsList);
+    } catch {
+      setBirds([]);
+      setLofts([]);
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleAssign(birdId: string, newLoftId: string | "") {
-    setMessage("");
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      if (!alive) return;
+      await load();
+    })();
+
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+
+    return birds
+      .filter((b) => {
+        if (loftFilter === "all") return true;
+        if (loftFilter === "unassigned") return !b.loftId;
+        return b.loftId === loftFilter;
+      })
+      .filter((b) => {
+        if (!q) return true;
+        const ring = b.ring?.toLowerCase() ?? "";
+        const name = b.name?.toLowerCase() ?? "";
+        return ring.includes(q) || name.includes(q);
+      })
+      .sort((a, b) => {
+        if (sortBy === "ring") return a.ring.localeCompare(b.ring);
+
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bTime - aTime;
+      });
+  }, [birds, query, loftFilter, sortBy]);
+
+  const clearFilters = () => {
+    setQuery("");
+    setLoftFilter("all");
+    setSortBy("newest");
+  };
+
+  async function submitNewBird(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    const ring = newRing.trim();
+    const name = newName.trim();
+    const loftId = newLoftId === "none" ? null : newLoftId;
+
+    if (!ring) {
+      setError("Please enter a ring number.");
+      return;
+    }
+
     try {
-      const res = await fetch("/api/birds/assign", {
+      setSaving(true);
+      const res = await fetch("/api/birds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ birdId, loftId: newLoftId || null }),
+        body: JSON.stringify({ ring, name: name || null, loftId }),
       });
 
-      const text = await res.text();
       if (!res.ok) {
-        setMessage(`Error assigning bird: ${res.status} ${text}`);
-        return;
+        const msg = await res.text();
+        throw new Error(msg || "Failed to create bird");
       }
 
-      await refresh();
+      setShowAdd(false);
+      setNewRing("");
+      setNewName("");
+      setNewLoftId("none");
+      await load();
     } catch (err) {
-      console.error(err);
-      setMessage("Failed to assign bird.");
+      setError(err instanceof Error ? err.message : "Failed to create bird");
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
     <main className="space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-50">My Birds</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold text-slate-50">Birds</h1>
+          <p className="text-sm text-slate-300">
+            Search by ring/name and filter by loft.
+          </p>
+        </div>
 
-      <div className="grid md:grid-cols-[1.1fr_1.2fr] gap-6">
-        <form
-          onSubmit={handleCreateBird}
-          className="space-y-3 bg-slate-900/80 border border-slate-700 rounded-2xl p-4"
-        >
-          <h2 className="text-sm font-semibold mb-1 text-slate-100">
-            Add a new bird
-          </h2>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setNewRing("");
+              setNewName("");
+              setNewLoftId("none");
+              setShowAdd(true);
+            }}
+            className="text-sm px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-400 text-white font-medium transition"
+          >
+            + Add bird
+          </button>
 
-          <div>
-            <label className="block text-xs mb-1 text-slate-300">
-              Ring (unique)
+          <Link
+            href="/birds"
+            className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
+            onClick={(e) => {
+              if (
+                typeof window !== "undefined" &&
+                window.location.pathname === "/birds"
+              ) {
+                e.preventDefault();
+                clearFilters();
+              }
+            }}
+          >
+            Clear
+          </Link>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
+        <div className="grid md:grid-cols-6 gap-3">
+          <div className="md:col-span-3">
+            <label className="block text-xs text-slate-400 mb-1">
+              Search (ring or name)
             </label>
             <input
-              className="w-full border border-slate-700 bg-slate-950 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-              value={ring}
-              onChange={(e) => setRing(e.target.value.toUpperCase())}
-              required
-              pattern="[A-Z]{2}[0-9]{2}[A-Z]?[0-9]{4}"
-              title="Format: 2 letters, 2 digits, optional letter, 4 digits (e.g. GB24A1234)"
-            />
-            <p className="mt-1 text-[10px] text-slate-500">
-              Example: <code className="font-mono">GB24A1234</code>
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs mb-1 text-slate-300">
-              Name (optional)
-            </label>
-            <input
-              className="w-full border border-slate-700 bg-slate-950 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="e.g. GB 23… or Newey"
+              className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
             />
           </div>
 
-          <div>
-            <label className="block text-xs mb-1 text-slate-300">
-              Assign to loft (optional)
-            </label>
+          <div className="md:col-span-2">
+            <label className="block text-xs text-slate-400 mb-1">Loft</label>
             <select
-              className="w-full border border-slate-700 bg-slate-950 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-              value={selectedLoftId}
-              onChange={(e) => setSelectedLoftId(e.target.value)}
+              value={loftFilter}
+              onChange={(e) => setLoftFilter(e.target.value)}
+              className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
             >
-              <option value="">Unassigned</option>
-              {lofts.map((loft) => (
-                <option key={loft.id} value={loft.id}>
-                  {loft.name}
+              <option value="all">All lofts</option>
+              <option value="unassigned">Unassigned</option>
+              {lofts.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
                 </option>
               ))}
             </select>
           </div>
 
-          <button
-            type="submit"
-            className="py-2 px-4 rounded-full border border-sky-500 bg-sky-500 text-white text-sm font-medium hover:bg-sky-400 transition disabled:opacity-60"
-            disabled={loading}
-          >
-            {loading ? "Creating..." : "Create bird"}
-          </button>
+          <div className="md:col-span-1">
+            <label className="block text-xs text-slate-400 mb-1">Sort</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "newest" | "ring")}
+              className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+            >
+              <option value="newest">Newest</option>
+              <option value="ring">Ring (A→Z)</option>
+            </select>
+          </div>
+        </div>
 
-          {message && (
-            <p className="mt-2 text-xs text-slate-300 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2">
-              {message}
+        <div className="flex items-center justify-between mt-3 text-xs text-slate-400">
+          <span>
+            Showing{" "}
+            <span className="text-slate-100 font-semibold">
+              {filtered.length}
+            </span>{" "}
+            of{" "}
+            <span className="text-slate-100 font-semibold">{birds.length}</span>{" "}
+            birds
+          </span>
+
+          {(query.trim() || loftFilter !== "all" || sortBy !== "newest") && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="px-3 py-1 rounded-full border border-slate-700 hover:border-sky-500 hover:text-sky-300 transition"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* List */}
+      <section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-slate-100 mb-3">Bird list</h2>
+
+        {loading ? (
+          <p className="text-xs text-slate-400">Loading…</p>
+        ) : filtered.length === 0 ? (
+          <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
+            <p className="mb-1">No birds match your search/filter.</p>
+            <p className="text-xs text-slate-500">
+              Try clearing filters or search by ring number.
             </p>
-          )}
-        </form>
-
-        <section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
-          <h2 className="text-sm font-semibold mb-3 text-slate-100">
-            Existing birds
-          </h2>
-
-          {birds.length === 0 ? (
-            <p className="text-xs text-slate-400">No birds yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {birds.map((bird) => (
-                <li
-                  key={bird.id}
-                  className="border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 flex flex-col gap-2"
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {filtered.map((b) => (
+              <li key={b.id}>
+                <Link
+                  href={`/birds/${b.id}`}
+                  className="block border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 hover:border-sky-500 hover:text-sky-300 transition"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <Link
-                      href={`/birds/${bird.id}`}
-                      className="flex-1 hover:text-sky-300 transition"
-                    >
-                      <p className="text-sm text-slate-100">
-                        {bird.ring}
-                        {bird.name ? (
-                          <span className="text-slate-400"> – {bird.name}</span>
-                        ) : null}
-                      </p>
-                      <p className="text-[11px] text-slate-500">
-                        {bird.loft ? `Loft: ${bird.loft.name}` : "Unassigned"}
-                      </p>
-                    </Link>
-                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm text-slate-100">
+                      {b.ring}
+                      {b.name ? (
+                        <span className="text-slate-400"> – {b.name}</span>
+                      ) : null}
+                    </div>
 
-                  <div>
-                    <label className="block text-[11px] mb-1 text-slate-400">
-                      Change loft assignment
-                    </label>
-                    <select
-                      className="border border-slate-700 bg-slate-950 rounded-lg px-3 py-1 text-xs outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                      value={bird.loftId ?? ""}
-                      onChange={(e) => handleAssign(bird.id, e.target.value)}
-                    >
-                      <option value="">Unassigned</option>
-                      {lofts.map((loft) => (
-                        <option key={loft.id} value={loft.id}>
-                          {loft.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="text-[11px] text-slate-500">
+                      {b.loft?.name
+                        ? `Loft: ${b.loft.name}`
+                        : b.loftId
+                        ? "Loft: (loading…)"
+                        : "Unassigned"}
+                    </div>
                   </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Add Bird Modal */}
+      {showAdd ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => {
+              if (!saving) setShowAdd(false);
+            }}
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 p-4">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-50">Add bird</h3>
+                <p className="text-xs text-slate-400">
+                  Add a bird and optionally assign it to a loft.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAdd(false)}
+                disabled={saving}
+                className="text-slate-400 hover:text-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={submitNewBird} className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">
+                  Ring number
+                </label>
+                <input
+                  value={newRing}
+                  onChange={(e) => setNewRing(e.target.value)}
+                  className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+                  placeholder="e.g. GB 23 A12345"
+                  maxLength={30}
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">
+                  Name (optional)
+                </label>
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+                  placeholder="e.g. Newey"
+                  maxLength={60}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Loft</label>
+                <select
+                  value={newLoftId}
+                  onChange={(e) => setNewLoftId(e.target.value)}
+                  className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+                >
+                  <option value="none">Unassigned</option>
+                  {lofts.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {error ? (
+                <p className="text-xs text-red-300 border border-red-900/40 bg-red-950/40 rounded-xl px-3 py-2">
+                  {error}
+                </p>
+              ) : null}
+
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowAdd(false)}
+                  disabled={saving}
+                  className="text-sm px-4 py-2 rounded-full border border-slate-700 hover:border-sky-500 hover:text-sky-300 transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="text-sm px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-400 text-white font-medium transition disabled:opacity-50"
+                >
+                  {saving ? "Saving…" : "Create bird"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

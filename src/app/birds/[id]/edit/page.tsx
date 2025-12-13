@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 type Params = { id: string };
 
-export default async function EditLoftPage({
+export default async function EditBirdPage({
   params,
 }: {
   params: Promise<Params>;
@@ -24,10 +24,19 @@ export default async function EditLoftPage({
   });
   if (!user) redirect("/auth");
 
-  const loft = await prisma.loft.findUnique({ where: { id } });
-  if (!loft || loft.ownerId !== user.id) notFound();
+  const bird = await prisma.bird.findUnique({
+    where: { id },
+    include: { loft: true },
+  });
+  if (!bird || bird.ownerId !== user.id) notFound();
 
-  async function updateLoft(formData: FormData) {
+  const lofts = await prisma.loft.findMany({
+    where: { ownerId: user.id },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, name: true },
+  });
+
+  async function updateBird(formData: FormData) {
     "use server";
 
     const session = await getServerSession(authOptions);
@@ -39,18 +48,32 @@ export default async function EditLoftPage({
     });
     if (!user) redirect("/auth");
 
+    const ring = String(formData.get("ring") ?? "").trim();
     const name = String(formData.get("name") ?? "").trim();
-    if (!name) return;
+    const loftIdRaw = String(formData.get("loftId") ?? "").trim();
 
-    const current = await prisma.loft.findUnique({ where: { id } });
+    if (!ring) return;
+
+    const current = await prisma.bird.findUnique({ where: { id } });
     if (!current || current.ownerId !== user.id) notFound();
 
-    await prisma.loft.update({
+    let loftId: string | null = null;
+    if (loftIdRaw && loftIdRaw !== "none") {
+      const loft = await prisma.loft.findUnique({ where: { id: loftIdRaw } });
+      if (!loft || loft.ownerId !== user.id) notFound();
+      loftId = loft.id;
+    }
+
+    await prisma.bird.update({
       where: { id },
-      data: { name },
+      data: {
+        ring,
+        name: name || null,
+        loftId,
+      },
     });
 
-    redirect(`/lofts/${id}`);
+    redirect(`/birds/${id}`);
   }
 
   return (
@@ -61,12 +84,12 @@ export default async function EditLoftPage({
             Dashboard
           </Link>
           <span className="mx-2 text-slate-600">/</span>
-          <Link href="/lofts" className="hover:text-sky-300">
-            Lofts
+          <Link href="/birds" className="hover:text-sky-300">
+            Birds
           </Link>
           <span className="mx-2 text-slate-600">/</span>
-          <Link href={`/lofts/${id}`} className="hover:text-sky-300">
-            {loft.name}
+          <Link href={`/birds/${id}`} className="hover:text-sky-300">
+            {bird.ring}
           </Link>
           <span className="mx-2 text-slate-600">/</span>
           <span className="text-slate-200">Edit</span>
@@ -74,12 +97,12 @@ export default async function EditLoftPage({
 
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-50">Edit loft</h1>
-            <p className="text-sm text-slate-300">Update the loft details.</p>
+            <h1 className="text-2xl font-semibold text-slate-50">Edit bird</h1>
+            <p className="text-sm text-slate-300">Update the bird details.</p>
           </div>
 
           <Link
-            href={`/lofts/${id}`}
+            href={`/birds/${id}`}
             className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
           >
             Cancel
@@ -88,20 +111,47 @@ export default async function EditLoftPage({
       </div>
 
       <form
-        action={updateLoft}
+        action={updateBird}
         className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4 space-y-4"
       >
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Loft name</label>
+          <label className="block text-xs text-slate-400 mb-1">Ring number</label>
+          <input
+            name="ring"
+            defaultValue={bird.ring}
+            className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+            placeholder="e.g. GB 23 A12345"
+            maxLength={30}
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Name (optional)</label>
           <input
             name="name"
-            defaultValue={loft.name}
+            defaultValue={bird.name ?? ""}
             className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
-            placeholder="e.g. Main Loft"
+            placeholder="e.g. Newey"
             maxLength={60}
           />
+        </div>
+
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Loft</label>
+          <select
+            name="loftId"
+            defaultValue={bird.loftId ?? "none"}
+            className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+          >
+            <option value="none">Unassigned</option>
+            {lofts.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
           <p className="text-[11px] text-slate-500 mt-1">
-            Keep it short and recognisable (e.g. “Main Loft”, “Young Birds”).
+            You can move a bird between lofts here.
           </p>
         </div>
 
