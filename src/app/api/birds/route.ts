@@ -3,6 +3,7 @@ import { prisma } from "@/lib/auth";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { isValidRing, normaliseRing } from "@/lib/validation";
+import { Prisma } from "@prisma/client";
 
 async function getCurrentUser() {
   const session = await getServerSession(authOptions);
@@ -81,8 +82,18 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(bird, { status: 201 });
-  } catch (err) {
-    console.error("Error creating bird:", err);
-    return new NextResponse("Error creating bird", { status: 500 });
+} catch (e) {
+  if (
+    e instanceof Prisma.PrismaClientKnownRequestError &&
+    e.code === "P2002"
+  ) {
+    return new NextResponse(
+      "That ring number already exists. Please use a unique ring.",
+      { status: 409 }
+    );
   }
+
+  console.error(e);
+  return new NextResponse("Failed to create bird", { status: 500 });
+}
 }
