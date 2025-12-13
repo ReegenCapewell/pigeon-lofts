@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import ConfirmModal from "@/components/ConfirmModal";
 
 type Loft = {
   id: string;
@@ -20,6 +21,9 @@ export default function LoftsPage() {
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
 
   async function load() {
     try {
@@ -35,6 +39,28 @@ export default function LoftsPage() {
       setLoading(false);
     }
   }
+
+useEffect(() => {
+  if (!menuOpenId) return;
+
+  function onPointerDown(e: MouseEvent | PointerEvent) {
+    const t = e.target as HTMLElement | null;
+    if (t?.closest('[data-loft-row-menu="true"]')) return;
+    setMenuOpenId(null);
+  }
+
+  function onKeyDown(e: KeyboardEvent) {
+    if (e.key === "Escape") setMenuOpenId(null);
+  }
+
+  document.addEventListener("pointerdown", onPointerDown);
+  document.addEventListener("keydown", onKeyDown);
+
+  return () => {
+    document.removeEventListener("pointerdown", onPointerDown);
+    document.removeEventListener("keydown", onKeyDown);
+  };
+}, [menuOpenId]);
 
   useEffect(() => {
     let alive = true;
@@ -102,6 +128,19 @@ export default function LoftsPage() {
     }
   }
 
+async function deleteLoft(id: string) {
+  const res = await fetch(`/api/lofts?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    const msg = await res.text();
+    alert(msg || "Failed to delete loft");
+    return;
+  }
+
+  setLofts((prev) => prev.filter((l) => l.id !== id));
+}
   return (
     <main className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -208,21 +247,58 @@ export default function LoftsPage() {
         ) : (
           <ul className="space-y-2">
             {filtered.map((l) => (
-              <li key={l.id}>
-                <Link
-                  href={`/lofts/${l.id}`}
-                  className="block border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 hover:border-sky-500 hover:text-sky-300 transition"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm text-slate-100">{l.name}</div>
-                    {l.createdAt ? (
-                      <div className="text-[11px] text-slate-500">
-                        {new Date(l.createdAt).toLocaleDateString()}
-                      </div>
-                    ) : null}
-                  </div>
-                </Link>
-              </li>
+<li key={l.id}>
+  <div className="relative flex items-center justify-between gap-3 border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 hover:border-sky-500 transition">
+    <Link
+      href={`/lofts/${l.id}`}
+      className="flex-1 hover:text-sky-300 transition"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm text-slate-100">{l.name}</div>
+        {l.createdAt ? (
+          <div className="text-[11px] text-slate-500">
+            {new Date(l.createdAt).toLocaleDateString()}
+          </div>
+        ) : null}
+      </div>
+    </Link>
+
+    <div className="relative" data-loft-row-menu="true">
+      <button
+        type="button"
+        onClick={() => setMenuOpenId(menuOpenId === l.id ? null : l.id)}
+        className="px-2 py-1 text-slate-400 hover:text-slate-100"
+        aria-label="More actions"
+      >
+        ⋯
+      </button>
+
+      {menuOpenId === l.id && (
+        <div className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-slate-700 bg-slate-950 shadow">
+          <Link
+            href={`/lofts/${l.id}/edit`}
+            className="block px-3 py-2 text-sm hover:bg-slate-900"
+            onClick={() => setMenuOpenId(null)}
+          >
+            Edit
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpenId(null);
+              setDeleteId(l.id);
+            }}
+            className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-950/40"
+          >
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+</li>
+
             ))}
           </ul>
         )}
@@ -297,6 +373,18 @@ export default function LoftsPage() {
           </div>
         </div>
       ) : null}
+      <ConfirmModal
+  open={!!deleteId}
+  title="Delete loft?"
+  message="Birds in this loft will become unassigned. This action cannot be undone."
+  confirmLabel="Delete loft"
+  onCancel={() => setDeleteId(null)}
+  onConfirm={() => {
+    if (!deleteId) return;
+    void deleteLoft(deleteId);
+    setDeleteId(null);
+  }}
+/>
     </main>
   );
 }

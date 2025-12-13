@@ -3,6 +3,8 @@ import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/auth";
+import AssignLoftButton from "@/components/AssignLoftButton";
+import DeleteBirdButton from "@/components/DeleteBirdButton";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,12 @@ export default async function BirdDashboardPage({
     where: { id: birdId },
     include: { loft: true },
   });
+
+const lofts = await prisma.loft.findMany({
+  where: { ownerId: user.id },
+  orderBy: { name: "asc" },
+  select: { id: true, name: true },
+});
 
   if (!bird || bird.ownerId !== user.id) notFound();
 
@@ -64,7 +72,15 @@ export default async function BirdDashboardPage({
             >
               Edit
             </Link>
-
+            <AssignLoftButton
+            birdId={bird.id}
+            lofts={lofts}
+            currentLoftId={bird.loftId}
+            />
+            <DeleteBirdButton
+            birdId={bird.id}
+            birdLabel={bird.name ? `${bird.ring} (${bird.name})` : bird.ring}
+            />
             <Link
               href="/birds"
               className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"

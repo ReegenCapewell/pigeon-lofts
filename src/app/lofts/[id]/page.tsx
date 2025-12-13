@@ -3,6 +3,8 @@ import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/auth";
+import LoftBirdsList from "@/components/LoftBirdsList";
+import DeleteLoftButton from "@/components/DeleteLoftButton";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,21 @@ export default async function LoftDashboardPage({
 
   if (!loft || loft.ownerId !== user.id) notFound();
 
+  // Options for "Move..." dropdown in LoftBirdsList
+  const loftOptions = await prisma.loft.findMany({
+    where: { ownerId: user.id },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
+  // Hygiene reminder: unassigned birds (overall, across all lofts)
+  const unassignedCount = await prisma.bird.count({
+    where: { ownerId: user.id, loftId: null },
+  });
+
+  const newestBird = loft.birds[0] ?? null;
+  const recentBirds = loft.birds.slice(0, 5);
+
   return (
     <main className="space-y-6">
       <div className="space-y-2">
@@ -52,13 +69,15 @@ export default async function LoftDashboardPage({
             <p className="text-sm text-slate-300">Loft dashboard</p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
             <Link
               href={`/lofts/${loft.id}/edit`}
               className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
             >
               Edit
             </Link>
+
+            <DeleteLoftButton loftId={loft.id} />
 
             <Link
               href="/lofts"
@@ -70,56 +89,67 @@ export default async function LoftDashboardPage({
         </div>
       </div>
 
-      <section className="grid md:grid-cols-3 gap-4">
+      {/* Key stats */}
+      <section className="grid md:grid-cols-4 gap-4">
         <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
-          <p className="text-xs text-slate-400">Total birds</p>
+          <p className="text-xs text-slate-400">Total birds in this loft</p>
           <p className="text-3xl font-semibold text-slate-50">
             {loft.birds.length}
           </p>
         </div>
 
         <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
-          <p className="text-xs text-slate-400">Birds needing medicine</p>
-          <p className="text-sm text-slate-500 mt-1">
-            Coming soon (Medical Records)
+          <p className="text-xs text-slate-400">Unassigned birds (overall)</p>
+          <p className="text-3xl font-semibold text-slate-50">
+            {unassignedCount}
+          </p>
+          <p className="text-xs text-slate-500 mt-2">
+            Tip: assign them from the Birds page.
           </p>
         </div>
 
         <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
-          <p className="text-xs text-slate-400">Average race result</p>
-          <p className="text-sm text-slate-500 mt-1">
-            Coming soon (Race Results)
+          <p className="text-xs text-slate-400">Newest bird in this loft</p>
+
+          {newestBird ? (
+            <Link
+              href={`/birds/${newestBird.id}`}
+              className="mt-2 inline-block hover:text-sky-300 transition"
+            >
+              <div className="text-sm text-slate-100">
+                {newestBird.ring}
+                {newestBird.name ? (
+                  <span className="text-slate-400"> – {newestBird.name}</span>
+                ) : null}
+              </div>
+              <div className="text-[11px] text-slate-500">
+                Added: {new Date(newestBird.createdAt).toLocaleDateString()}
+              </div>
+            </Link>
+          ) : (
+            <p className="text-sm text-slate-500 mt-2">No birds yet.</p>
+          )}
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
+          <p className="text-xs text-slate-400">Coming soon</p>
+          <p className="text-sm text-slate-500 mt-2">
+            Medical & race insights will appear here.
           </p>
         </div>
       </section>
 
-      <section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-slate-100 mb-3">
-          Birds in this loft
-        </h2>
-
-        {loft.birds.length === 0 ? (
-          <p className="text-xs text-slate-400">No birds assigned yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {loft.birds.map((b) => (
-              <li key={b.id}>
-                <Link
-                  href={`/birds/${b.id}`}
-                  className="block border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 hover:border-sky-500 hover:text-sky-300 transition"
-                >
-                  <div className="text-sm text-slate-100">
-                    {b.ring}
-                    {b.name ? (
-                      <span className="text-slate-400"> – {b.name}</span>
-                    ) : null}
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* Birds list with search/sort + inline actions */}
+      <LoftBirdsList
+        currentLoftId={loft.id}
+        loftOptions={loftOptions}
+        birds={loft.birds.map((b) => ({
+          id: b.id,
+          ring: b.ring,
+          name: b.name ?? null,
+          createdAt: b.createdAt.toISOString(),
+        }))}
+      />
     </main>
   );
 }

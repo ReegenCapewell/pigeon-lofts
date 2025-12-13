@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import ConfirmModal from "@/components/ConfirmModal";
 
 type Loft = { id: string; name: string };
 
@@ -29,36 +30,103 @@ export default function BirdsPage() {
   const [newLoftId, setNewLoftId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [assignId, setAssignId] = useState<string | null>(null);
+  const [assignLoftId, setAssignLoftId] = useState<string>("none");
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [assignSaving, setAssignSaving] = useState(false);
 
-  async function load() {
-    try {
-      setLoading(true);
 
-      const [birdsRes, loftsRes] = await Promise.all([
-        fetch("/api/birds", { cache: "no-store" }),
-        fetch("/api/lofts", { cache: "no-store" }),
-      ]);
+async function load() {
+  setLoading(true);
 
-      const birdsData = await birdsRes.json();
-      const loftsData = await loftsRes.json();
-
-      const birdsList: Bird[] = Array.isArray(birdsData)
-        ? birdsData
-        : birdsData.birds ?? [];
-
-      const loftsList: Loft[] = Array.isArray(loftsData)
-        ? loftsData
-        : loftsData.lofts ?? [];
-
-      setBirds(birdsList);
-      setLofts(loftsList);
-    } catch {
-      setBirds([]);
-      setLofts([]);
-    } finally {
-      setLoading(false);
-    }
+  // Birds
+  try {
+    const birdsRes = await fetch("/api/birds", { cache: "no-store" });
+    const birdsData = await birdsRes.json();
+    const birdsList: Bird[] = Array.isArray(birdsData)
+      ? birdsData
+      : birdsData.birds ?? [];
+    setBirds(birdsList);
+  } catch {
+    setBirds([]);
   }
+
+  // Lofts
+  try {
+    const loftsRes = await fetch("/api/lofts", { cache: "no-store" });
+    const loftsData = await loftsRes.json();
+    const loftsList: Loft[] = Array.isArray(loftsData)
+      ? loftsData
+      : loftsData.lofts ?? [];
+    setLofts(loftsList);
+  } catch {
+    // don’t wipe birds if lofts fails
+    setLofts([]);
+  }
+
+  setLoading(false);
+}
+
+
+  async function deleteBird(id: string) {
+  try {
+    const res = await fetch(`/api/birds?id=${id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) throw new Error("Failed to delete bird");
+
+    setBirds((prev) => prev.filter((b) => b.id !== id));
+  } catch {
+    alert("Failed to delete bird");
+  } finally {
+    setDeleteId(null);
+  }
+}
+
+async function assignBirdToLoft(birdId: string, loftId: string) {
+  setAssignError(null);
+
+  try {
+    setAssignSaving(true);
+
+    // ✅ Use your existing route that already exists: /api/birds/assign
+    const res = await fetch("/api/birds/assign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ birdId, loftId }),
+    });
+
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(msg || "Failed to assign loft");
+    }
+
+    // Update UI locally so it feels instant
+    const loft = lofts.find((l) => l.id === loftId) || null;
+
+    setBirds((prev) =>
+      prev.map((b) =>
+        b.id === birdId
+          ? {
+              ...b,
+              loftId,
+              loft: loft ? { id: loft.id, name: loft.name } : null,
+            }
+          : b
+      )
+    );
+
+    setAssignId(null);
+    setAssignLoftId("none");
+  } catch (err) {
+    setAssignError(err instanceof Error ? err.message : "Failed to assign loft");
+  } finally {
+    setAssignSaving(false);
+  }
+}
 
   useEffect(() => {
     let alive = true;
@@ -269,29 +337,86 @@ export default function BirdsPage() {
         ) : (
           <ul className="space-y-2">
             {filtered.map((b) => (
-              <li key={b.id}>
-                <Link
-                  href={`/birds/${b.id}`}
-                  className="block border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 hover:border-sky-500 hover:text-sky-300 transition"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm text-slate-100">
-                      {b.ring}
-                      {b.name ? (
-                        <span className="text-slate-400"> – {b.name}</span>
-                      ) : null}
-                    </div>
+              <li key={b.id} className="relative">
+  <div className="flex items-center justify-between gap-3 border border-slate-700 bg-slate-950 rounded-xl px-3 py-2">
+    <Link
+      href={`/birds/${b.id}`}
+      className="flex-1 hover:text-sky-300 transition"
+    >
+      <div className="text-sm text-slate-100">
+        {b.ring}
+        {b.name ? <span className="text-slate-400"> – {b.name}</span> : null}
+      </div>
 
-                    <div className="text-[11px] text-slate-500">
-                      {b.loft?.name
-                        ? `Loft: ${b.loft.name}`
-                        : b.loftId
-                        ? "Loft: (loading…)"
-                        : "Unassigned"}
-                    </div>
-                  </div>
-                </Link>
-              </li>
+<div className="text-[11px]">
+  {b.loft?.name ? (
+    <span className="text-slate-500">Loft: {b.loft.name}</span>
+  ) : (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        setAssignError(null);
+        setAssignLoftId(lofts[0]?.id ?? "none");
+        setAssignId(b.id);
+      }}
+      className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400 transition"
+    >
+      Unassigned
+      <span className="text-[10px] opacity-80">Assign to loft</span>
+    </button>
+  )}
+</div>
+
+    </Link>
+
+    {/* Actions */}
+    <button
+      onClick={() =>
+        setMenuOpenId(menuOpenId === b.id ? null : b.id)
+      }
+      className="px-2 py-1 text-slate-400 hover:text-slate-100"
+    >
+      ⋯
+    </button>
+
+    {menuOpenId === b.id && (
+      <div className="absolute right-2 top-10 z-20 w-40 rounded-xl border border-slate-700 bg-slate-950 shadow">
+        {!b.loftId && (
+          <button
+  onClick={() => {
+    setMenuOpenId(null);
+    setAssignError(null);
+    setAssignLoftId(lofts[0]?.id ?? "none");
+    setAssignId(b.id);
+  }}
+  className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-900"
+>
+  Assign loft
+</button>
+        )}
+
+        <Link
+          href={`/birds/${b.id}/edit`}
+          className="block px-3 py-2 text-sm hover:bg-slate-900"
+        >
+          Edit
+        </Link>
+
+        <button
+          onClick={() => {
+            setMenuOpenId(null);
+            setDeleteId(b.id);
+          }}
+          className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-950/40"
+        >
+          Delete
+        </button>
+      </div>
+    )}
+  </div>
+</li>
+
             ))}
           </ul>
         )}
@@ -395,6 +520,90 @@ export default function BirdsPage() {
           </div>
         </div>
       ) : null}
+      <ConfirmModal
+  open={!!deleteId}
+  title="Delete bird?"
+  message="This action cannot be undone."
+  confirmLabel="Delete bird"
+  onCancel={() => setDeleteId(null)}
+  onConfirm={() => deleteId && deleteBird(deleteId)}
+/>
+{/* Assign Loft Modal */}
+{assignId ? (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="absolute inset-0 bg-black/60"
+      onClick={() => {
+        if (!assignSaving) setAssignId(null);
+      }}
+    />
+    <div className="relative w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 p-4">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-50">Assign loft</h3>
+          <p className="text-xs text-slate-400">
+            Choose which loft this bird belongs to.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAssignId(null)}
+          disabled={assignSaving}
+          className="text-slate-400 hover:text-slate-200"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Loft</label>
+          <select
+            value={assignLoftId}
+            onChange={(e) => setAssignLoftId(e.target.value)}
+            className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+          >
+            {lofts.length === 0 ? (
+              <option value="none">No lofts found</option>
+            ) : (
+              lofts.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+
+        {assignError ? (
+          <p className="text-xs text-red-300 border border-red-900/40 bg-red-950/40 rounded-xl px-3 py-2">
+            {assignError}
+          </p>
+        ) : null}
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setAssignId(null)}
+            disabled={assignSaving}
+            className="text-sm px-4 py-2 rounded-full border border-slate-700 hover:border-sky-500 hover:text-sky-300 transition disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            disabled={assignSaving || lofts.length === 0 || assignLoftId === "none"}
+            onClick={() => assignBirdToLoft(assignId, assignLoftId)}
+            className="text-sm px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-400 text-white font-medium transition disabled:opacity-50"
+          >
+            {assignSaving ? "Saving…" : "Assign"}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+) : null}
     </main>
   );
 }
