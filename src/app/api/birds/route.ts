@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { isValidRing, normaliseRing } from "@/lib/validation";
 import { Prisma } from "@prisma/client";
+import { NextRequest } from "next/server";
 
 async function getCurrentUser() {
   const session = await getServerSession(authOptions);
@@ -97,3 +98,31 @@ export async function POST(req: Request) {
   return new NextResponse("Failed to create bird", { status: 500 });
 }
 }
+
+// DELETE /api/birds?id=... -> delete bird for current user
+export async function DELETE(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  const id = req.nextUrl.searchParams.get("id");
+  if (!id) {
+    return new NextResponse("Missing id", { status: 400 });
+  }
+
+  const bird = await prisma.bird.findUnique({
+    where: { id },
+    select: { id: true, ownerId: true },
+  });
+
+  if (!bird || bird.ownerId !== user.id) {
+    // 404 avoids leaking whether the ID exists
+    return new NextResponse("Not found", { status: 404 });
+  }
+
+  await prisma.bird.delete({ where: { id } });
+
+  return NextResponse.json({ ok: true });
+}
+
