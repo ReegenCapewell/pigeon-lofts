@@ -64,29 +64,31 @@ export default async function LoftDashboardPage({
         </nav>
 
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-50">{loft.name}</h1>
-            <p className="text-sm text-slate-300">Loft dashboard</p>
-          </div>
+  <div>
+    <h1 className="text-2xl font-semibold text-slate-50">{loft.name}</h1>
+    <p className="text-sm text-slate-300">Loft dashboard</p>
+  </div>
 
-          <div className="flex gap-2 flex-wrap justify-end">
-            <Link
-              href={`/lofts/${loft.id}/edit`}
-              className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
-            >
-              Edit
-            </Link>
+  <div className="flex flex-wrap items-center justify-end gap-2">
+    <Link
+      href={`/lofts/${loft.id}/edit`}
+      className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
+    >
+      Edit
+    </Link>
 
-            <DeleteLoftButton loftId={loft.id} />
+    {/* If you're using DeleteLoftButton on the dashboard, keep it inline here */}
+    <DeleteLoftButton loftId={loft.id} loftLabel={loft.name} />
 
-            <Link
-              href="/lofts"
-              className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
-            >
-              Back to lofts
-            </Link>
-          </div>
-        </div>
+    <Link
+      href="/lofts"
+      className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
+    >
+      Back to lofts
+    </Link>
+  </div>
+</div>
+
       </div>
 
       {/* Key stats */}

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import ConfirmModal from "@/components/ConfirmModal";
+import DeleteLoftButton from "@/components/DeleteLoftButton";
 
 type Loft = {
   id: string;
@@ -21,9 +21,8 @@ export default function LoftsPage() {
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
 
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -40,28 +39,6 @@ export default function LoftsPage() {
     }
   }
 
-useEffect(() => {
-  if (!menuOpenId) return;
-
-  function onPointerDown(e: MouseEvent | PointerEvent) {
-    const t = e.target as HTMLElement | null;
-    if (t?.closest('[data-loft-row-menu="true"]')) return;
-    setMenuOpenId(null);
-  }
-
-  function onKeyDown(e: KeyboardEvent) {
-    if (e.key === "Escape") setMenuOpenId(null);
-  }
-
-  document.addEventListener("pointerdown", onPointerDown);
-  document.addEventListener("keydown", onKeyDown);
-
-  return () => {
-    document.removeEventListener("pointerdown", onPointerDown);
-    document.removeEventListener("keydown", onKeyDown);
-  };
-}, [menuOpenId]);
-
   useEffect(() => {
     let alive = true;
 
@@ -75,6 +52,29 @@ useEffect(() => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Close ⋯ menu on outside click / Escape
+  useEffect(() => {
+    if (!menuOpenId) return;
+
+    function onPointerDown(e: MouseEvent | PointerEvent) {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest('[data-row-menu="true"]')) return;
+      setMenuOpenId(null);
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpenId(null);
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpenId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -114,8 +114,9 @@ useEffect(() => {
       });
 
       if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || "Failed to create loft");
+        const msg = (await res.text()).trim();
+        setError(msg || "Failed to create loft");
+        return;
       }
 
       setShowAdd(false);
@@ -128,19 +129,6 @@ useEffect(() => {
     }
   }
 
-async function deleteLoft(id: string) {
-  const res = await fetch(`/api/lofts?id=${encodeURIComponent(id)}`, {
-    method: "DELETE",
-  });
-
-  if (!res.ok) {
-    const msg = await res.text();
-    alert(msg || "Failed to delete loft");
-    return;
-  }
-
-  setLofts((prev) => prev.filter((l) => l.id !== id));
-}
   return (
     <main className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -232,61 +220,88 @@ async function deleteLoft(id: string) {
       </section>
 
       {/* List */}
-      {/* List */}
-<section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
-  <h2 className="text-sm font-semibold text-slate-100 mb-3">Loft list</h2>
+      <section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-slate-100 mb-3">Loft list</h2>
 
-  {loading ? (
-    <p className="text-xs text-slate-400">Loading…</p>
-  ) : lofts.length === 0 ? (
-    <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
-      <p className="mb-1">No lofts yet.</p>
-      <p className="text-xs text-slate-500 mb-3">
-        Create a loft to organise your birds and track them more easily.
-      </p>
+        {loading ? (
+          <p className="text-xs text-slate-400">Loading…</p>
+        ) : lofts.length === 0 ? (
+          <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
+            <p className="mb-1">No lofts yet.</p>
+            <p className="text-xs text-slate-500 mb-3">
+              Create a loft to organise your birds and track them more easily.
+            </p>
 
-      <button
-        type="button"
-        onClick={() => {
-          setError(null);
-          setNewName("");
-          setShowAdd(true);
-        }}
-        className="text-sm px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-400 text-white font-medium transition"
-      >
-        + Add loft
-      </button>
-    </div>
-  ) : filtered.length === 0 ? (
-    <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
-      <p className="mb-1">No lofts match your search.</p>
-      <p className="text-xs text-slate-500">
-        Try clearing the search box.
-      </p>
-    </div>
-  ) : (
-    <ul className="space-y-2">
-      {filtered.map((l) => (
-        <li key={l.id}>
-          <Link
-            href={`/lofts/${l.id}`}
-            className="block border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 hover:border-sky-500 hover:text-sky-300 transition"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm text-slate-100">{l.name}</div>
-              {l.createdAt ? (
-                <div className="text-[11px] text-slate-500">
-                  {new Date(l.createdAt).toLocaleDateString()}
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setNewName("");
+                setShowAdd(true);
+              }}
+              className="text-sm px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-400 text-white font-medium transition"
+            >
+              + Add loft
+            </button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
+            <p className="mb-1">No lofts match your search.</p>
+            <p className="text-xs text-slate-500">Try clearing the search box.</p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {filtered.map((l) => (
+              <li key={l.id} className="relative">
+                <div className="flex items-center justify-between gap-3 border border-slate-700 bg-slate-950 rounded-xl px-3 py-2">
+                  <Link
+                    href={`/lofts/${l.id}`}
+                    className="flex-1 hover:text-sky-300 transition"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm text-slate-100">{l.name}</div>
+                      {l.createdAt ? (
+                        <div className="text-[11px] text-slate-500">
+                          {new Date(l.createdAt).toLocaleDateString()}
+                        </div>
+                      ) : null}
+                    </div>
+                  </Link>
+
+                  <div className="relative" data-row-menu="true">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMenuOpenId(menuOpenId === l.id ? null : l.id)
+                      }
+                      className="px-2 py-1 text-slate-400 hover:text-slate-100"
+                      aria-label="Loft actions"
+                    >
+                      ⋯
+                    </button>
+
+                    {menuOpenId === l.id && (
+                      <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-slate-700 bg-slate-950 shadow">
+                        <Link
+                          href={`/lofts/${l.id}/edit`}
+                          className="block px-3 py-2 text-sm hover:bg-slate-900"
+                          onClick={() => setMenuOpenId(null)}
+                        >
+                          Edit
+                        </Link>
+
+                        <div className="px-3 py-2">
+                          <DeleteLoftButton loftId={l.id} loftLabel={l.name} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ) : null}
-            </div>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  )}
-</section>
-
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {/* Add Loft Modal */}
       {showAdd ? (
@@ -357,18 +372,6 @@ async function deleteLoft(id: string) {
           </div>
         </div>
       ) : null}
-      <ConfirmModal
-  open={!!deleteId}
-  title="Delete loft?"
-  message="Birds in this loft will become unassigned. This action cannot be undone."
-  confirmLabel="Delete loft"
-  onCancel={() => setDeleteId(null)}
-  onConfirm={() => {
-    if (!deleteId) return;
-    void deleteLoft(deleteId);
-    setDeleteId(null);
-  }}
-/>
     </main>
   );
 }
