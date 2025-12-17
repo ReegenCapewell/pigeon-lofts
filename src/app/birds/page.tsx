@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import ConfirmModal from "@/components/ConfirmModal";
+import ListSkeleton from "@/components/ListSkeleton";
 
 type Loft = { id: string; name: string };
 
@@ -343,7 +344,7 @@ if (!res.ok) {
   <h2 className="text-sm font-semibold text-slate-100 mb-3">Bird list</h2>
 
   {loading ? (
-    <p className="text-xs text-slate-400">Loading…</p>
+    <ListSkeleton rows={6} />
   ) : birds.length === 0 ? (
     <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
       <p className="mb-1">No birds yet.</p>
