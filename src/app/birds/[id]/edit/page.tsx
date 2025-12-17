@@ -3,6 +3,8 @@ import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/auth";
+import { isValidRing, normaliseRing } from "@/lib/validation";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +12,14 @@ type Params = { id: string };
 
 export default async function EditBirdPage({
   params,
+  searchParams,
 }: {
   params: Promise<Params>;
+  searchParams?: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
+  const sp = (await searchParams) ?? {};
+  const errorParam = sp.error ?? "";
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect("/auth");
@@ -48,33 +54,65 @@ export default async function EditBirdPage({
     });
     if (!user) redirect("/auth");
 
-    const ring = String(formData.get("ring") ?? "").trim();
+    const ringRaw = String(formData.get("ring") ?? "").trim();
     const name = String(formData.get("name") ?? "").trim();
     const loftIdRaw = String(formData.get("loftId") ?? "").trim();
 
-    if (!ring) return;
+    if (!ringRaw) {
+      redirect(`/birds/${id}/edit?error=missing_ring`);
+    }
 
-    const current = await prisma.bird.findUnique({ where: { id } });
+    const ring = normaliseRing(ringRaw);
+
+    if (!isValidRing(ring)) {
+      redirect(`/birds/${id}/edit?error=invalid_ring`);
+    }
+
+    // Ensure bird still belongs to user at time of update
+    const current = await prisma.bird.findUnique({
+      where: { id },
+      select: { id: true, ownerId: true },
+    });
     if (!current || current.ownerId !== user.id) notFound();
 
     let loftId: string | null = null;
     if (loftIdRaw && loftIdRaw !== "none") {
-      const loft = await prisma.loft.findUnique({ where: { id: loftIdRaw } });
+      const loft = await prisma.loft.findUnique({
+        where: { id: loftIdRaw },
+        select: { id: true, ownerId: true },
+      });
       if (!loft || loft.ownerId !== user.id) notFound();
       loftId = loft.id;
     }
 
-    await prisma.bird.update({
-      where: { id },
-      data: {
-        ring,
-        name: name || null,
-        loftId,
-      },
-    });
+    try {
+      await prisma.bird.update({
+        where: { id },
+        data: {
+          ring,
+          name: name || null,
+          loftId,
+        },
+      });
+    } catch (e) {
+      // Unique constraint violation (global ring uniqueness)
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        redirect(`/birds/${id}/edit?error=ring_taken`);
+      }
+      throw e;
+    }
 
     redirect(`/birds/${id}`);
   }
+
+  const errorMessage =
+    errorParam === "ring_taken"
+      ? "That ring number already exists. Please use a unique ring."
+      : errorParam === "invalid_ring"
+        ? "Invalid ring format. Please use the correct ring format."
+        : errorParam === "missing_ring"
+          ? "Please enter a ring number."
+          : "";
 
   return (
     <main className="space-y-6">
@@ -114,6 +152,12 @@ export default async function EditBirdPage({
         action={updateBird}
         className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4 space-y-4"
       >
+        {errorMessage ? (
+          <div className="text-xs text-red-300 border border-red-900/40 bg-red-950/40 rounded-xl px-3 py-2">
+            {errorMessage}
+          </div>
+        ) : null}
+
         <div>
           <label className="block text-xs text-slate-400 mb-1">Ring number</label>
           <input

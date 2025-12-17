@@ -1,10 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/auth";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { isValidRing, normaliseRing } from "@/lib/validation";
 import { Prisma } from "@prisma/client";
-import { NextRequest } from "next/server";
 
 async function getCurrentUser() {
   const session = await getServerSession(authOptions);
@@ -13,7 +12,7 @@ async function getCurrentUser() {
   }
 
   const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
+    where: { email: session.user.email.toLowerCase() },
   });
 
   return user;
