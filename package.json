@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/core": "^0.34.3",
@@ -27,7 +28,6 @@
     "eslint-config-next": "16.0.3",
     "prisma": "^6.19.1",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "postinstall": "prisma generate"
+    "typescript": "^5"
   }
 }
