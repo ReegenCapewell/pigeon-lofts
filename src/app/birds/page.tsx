@@ -70,17 +70,20 @@ async function load() {
 }
 
 
-  async function deleteBird(id: string) {
+async function deleteBird(id: string) {
   try {
-    const res = await fetch(`/api/birds?id=${id}`, {
+    const res = await fetch(`/api/birds?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
 
-    if (!res.ok) throw new Error("Failed to delete bird");
+    if (!res.ok) {
+      const msg = (await res.text()).trim();
+      throw new Error(msg || "Failed to delete bird");
+    }
 
     setBirds((prev) => prev.filter((b) => b.id !== id));
-  } catch {
-    alert("Failed to delete bird");
+  } catch (e) {
+    setAssignError(e instanceof Error ? e.message : "Failed to delete bird");
   } finally {
     setDeleteId(null);
   }
@@ -193,10 +196,23 @@ async function assignBirdToLoft(birdId: string, loftId: string) {
         body: JSON.stringify({ ring, name: name || null, loftId }),
       });
 
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || "Failed to create bird");
-      }
+if (!res.ok) {
+  const msg = (await res.text()).trim();
+
+  // Friendly messages based on status
+  if (res.status === 409) {
+    setError(msg || "That ring number already exists. Please use a unique ring.");
+    return;
+  }
+
+  if (res.status === 400) {
+    setError(msg || "Please check the ring format and try again.");
+    return;
+  }
+
+  setError(msg || "Failed to create bird");
+  return;
+}
 
       setShowAdd(false);
       setNewRing("");
@@ -322,105 +338,130 @@ async function assignBirdToLoft(birdId: string, loftId: string) {
       </section>
 
       {/* List */}
-      <section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-slate-100 mb-3">Bird list</h2>
+      {/* List */}
+<section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
+  <h2 className="text-sm font-semibold text-slate-100 mb-3">Bird list</h2>
 
-        {loading ? (
-          <p className="text-xs text-slate-400">Loading…</p>
-        ) : filtered.length === 0 ? (
-          <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
-            <p className="mb-1">No birds match your search/filter.</p>
-            <p className="text-xs text-slate-500">
-              Try clearing filters or search by ring number.
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {filtered.map((b) => (
-              <li key={b.id} className="relative">
-  <div className="flex items-center justify-between gap-3 border border-slate-700 bg-slate-950 rounded-xl px-3 py-2">
-    <Link
-      href={`/birds/${b.id}`}
-      className="flex-1 hover:text-sky-300 transition"
-    >
-      <div className="text-sm text-slate-100">
-        {b.ring}
-        {b.name ? <span className="text-slate-400"> – {b.name}</span> : null}
-      </div>
+  {loading ? (
+    <p className="text-xs text-slate-400">Loading…</p>
+  ) : birds.length === 0 ? (
+    <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
+      <p className="mb-1">No birds yet.</p>
+      <p className="text-xs text-slate-500 mb-3">
+        Add your first bird to start tracking rings, lofts, and profiles.
+      </p>
 
-<div className="text-[11px]">
-  {b.loft?.name ? (
-    <span className="text-slate-500">Loft: {b.loft.name}</span>
+      <button
+        type="button"
+        onClick={() => {
+          setError(null);
+          setNewRing("");
+          setNewName("");
+          setNewLoftId("none");
+          setShowAdd(true);
+        }}
+        className="text-sm px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-400 text-white font-medium transition"
+      >
+        + Add bird
+      </button>
+    </div>
+  ) : filtered.length === 0 ? (
+    <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
+      <p className="mb-1">No birds match your search/filter.</p>
+      <p className="text-xs text-slate-500">
+        Try clearing filters or search by ring number.
+      </p>
+    </div>
   ) : (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.preventDefault();
-        setAssignError(null);
-        setAssignLoftId(lofts[0]?.id ?? "none");
-        setAssignId(b.id);
-      }}
-      className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400 transition"
-    >
-      Unassigned
-      <span className="text-[10px] opacity-80">Assign to loft</span>
-    </button>
+    <ul className="space-y-2">
+      {filtered.map((b) => (
+        <li key={b.id} className="relative">
+          <div className="flex items-center justify-between gap-3 border border-slate-700 bg-slate-950 rounded-xl px-3 py-2">
+            <Link
+              href={`/birds/${b.id}`}
+              className="flex-1 hover:text-sky-300 transition"
+            >
+              <div className="text-sm text-slate-100">
+                {b.ring}
+                {b.name ? (
+                  <span className="text-slate-400"> – {b.name}</span>
+                ) : null}
+              </div>
+
+              <div className="text-[11px]">
+                {b.loft?.name ? (
+                  <span className="text-slate-500">Loft: {b.loft.name}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setAssignError(null);
+                      setAssignLoftId(lofts[0]?.id ?? "none");
+                      setAssignId(b.id);
+                      setMenuOpenId(null);
+                      setDeleteId(null);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400 transition"
+                  >
+                    Unassigned
+                    <span className="text-[10px] opacity-80">
+                      Assign to loft
+                    </span>
+                  </button>
+                )}
+              </div>
+            </Link>
+
+            {/* Actions */}
+            <button
+              onClick={() => setMenuOpenId(menuOpenId === b.id ? null : b.id)}
+              className="px-2 py-1 text-slate-400 hover:text-slate-100"
+            >
+              ⋯
+            </button>
+
+            {menuOpenId === b.id && (
+              <div className="absolute right-2 top-10 z-20 w-40 rounded-xl border border-slate-700 bg-slate-950 shadow">
+                {!b.loftId && (
+                  <button
+                    onClick={() => {
+                      setMenuOpenId(null);
+                      setAssignError(null);
+                      setAssignLoftId(lofts[0]?.id ?? "none");
+                      setAssignId(b.id);
+                    }}
+                    className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-900"
+                  >
+                    Assign loft
+                  </button>
+                )}
+
+                <Link
+                  href={`/birds/${b.id}/edit`}
+                  className="block px-3 py-2 text-sm hover:bg-slate-900"
+                >
+                  Edit
+                </Link>
+
+                <button
+                  onClick={() => {
+                    setMenuOpenId(null);
+                    setDeleteId(b.id);
+                  }}
+                  className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-950/40"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
   )}
-</div>
+</section>
 
-    </Link>
-
-    {/* Actions */}
-    <button
-      onClick={() =>
-        setMenuOpenId(menuOpenId === b.id ? null : b.id)
-      }
-      className="px-2 py-1 text-slate-400 hover:text-slate-100"
-    >
-      ⋯
-    </button>
-
-    {menuOpenId === b.id && (
-      <div className="absolute right-2 top-10 z-20 w-40 rounded-xl border border-slate-700 bg-slate-950 shadow">
-        {!b.loftId && (
-          <button
-  onClick={() => {
-    setMenuOpenId(null);
-    setAssignError(null);
-    setAssignLoftId(lofts[0]?.id ?? "none");
-    setAssignId(b.id);
-  }}
-  className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-900"
->
-  Assign loft
-</button>
-        )}
-
-        <Link
-          href={`/birds/${b.id}/edit`}
-          className="block px-3 py-2 text-sm hover:bg-slate-900"
-        >
-          Edit
-        </Link>
-
-        <button
-          onClick={() => {
-            setMenuOpenId(null);
-            setDeleteId(b.id);
-          }}
-          className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-950/40"
-        >
-          Delete
-        </button>
-      </div>
-    )}
-  </div>
-</li>
-
-            ))}
-          </ul>
-        )}
-      </section>
 
       {/* Add Bird Modal */}
       {showAdd ? (
@@ -523,7 +564,11 @@ async function assignBirdToLoft(birdId: string, loftId: string) {
       <ConfirmModal
   open={!!deleteId}
   title="Delete bird?"
-  message="This action cannot be undone."
+  message={
+  assignError
+    ? `This action cannot be undone.\n\n${assignError}`
+    : "This action cannot be undone."
+  }
   confirmLabel="Delete bird"
   onCancel={() => setDeleteId(null)}
   onConfirm={() => deleteId && deleteBird(deleteId)}

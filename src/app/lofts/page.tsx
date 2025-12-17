@@ -232,77 +232,61 @@ async function deleteLoft(id: string) {
       </section>
 
       {/* List */}
-      <section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-slate-100 mb-3">Loft list</h2>
+      {/* List */}
+<section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
+  <h2 className="text-sm font-semibold text-slate-100 mb-3">Loft list</h2>
 
-        {loading ? (
-          <p className="text-xs text-slate-400">Loading…</p>
-        ) : filtered.length === 0 ? (
-          <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
-            <p className="mb-1">No lofts match your search.</p>
-            <p className="text-xs text-slate-500">
-              Try clearing the search box.
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {filtered.map((l) => (
-<li key={l.id}>
-  <div className="relative flex items-center justify-between gap-3 border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 hover:border-sky-500 transition">
-    <Link
-      href={`/lofts/${l.id}`}
-      className="flex-1 hover:text-sky-300 transition"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-sm text-slate-100">{l.name}</div>
-        {l.createdAt ? (
-          <div className="text-[11px] text-slate-500">
-            {new Date(l.createdAt).toLocaleDateString()}
-          </div>
-        ) : null}
-      </div>
-    </Link>
+  {loading ? (
+    <p className="text-xs text-slate-400">Loading…</p>
+  ) : lofts.length === 0 ? (
+    <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
+      <p className="mb-1">No lofts yet.</p>
+      <p className="text-xs text-slate-500 mb-3">
+        Create a loft to organise your birds and track them more easily.
+      </p>
 
-    <div className="relative" data-loft-row-menu="true">
       <button
         type="button"
-        onClick={() => setMenuOpenId(menuOpenId === l.id ? null : l.id)}
-        className="px-2 py-1 text-slate-400 hover:text-slate-100"
-        aria-label="More actions"
+        onClick={() => {
+          setError(null);
+          setNewName("");
+          setShowAdd(true);
+        }}
+        className="text-sm px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-400 text-white font-medium transition"
       >
-        ⋯
+        + Add loft
       </button>
-
-      {menuOpenId === l.id && (
-        <div className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-slate-700 bg-slate-950 shadow">
-          <Link
-            href={`/lofts/${l.id}/edit`}
-            className="block px-3 py-2 text-sm hover:bg-slate-900"
-            onClick={() => setMenuOpenId(null)}
-          >
-            Edit
-          </Link>
-
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpenId(null);
-              setDeleteId(l.id);
-            }}
-            className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-950/40"
-          >
-            Delete
-          </button>
-        </div>
-      )}
     </div>
-  </div>
-</li>
+  ) : filtered.length === 0 ? (
+    <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
+      <p className="mb-1">No lofts match your search.</p>
+      <p className="text-xs text-slate-500">
+        Try clearing the search box.
+      </p>
+    </div>
+  ) : (
+    <ul className="space-y-2">
+      {filtered.map((l) => (
+        <li key={l.id}>
+          <Link
+            href={`/lofts/${l.id}`}
+            className="block border border-slate-700 bg-slate-950 rounded-xl px-3 py-2 hover:border-sky-500 hover:text-sky-300 transition"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm text-slate-100">{l.name}</div>
+              {l.createdAt ? (
+                <div className="text-[11px] text-slate-500">
+                  {new Date(l.createdAt).toLocaleDateString()}
+                </div>
+              ) : null}
+            </div>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )}
+</section>
 
-            ))}
-          </ul>
-        )}
-      </section>
 
       {/* Add Loft Modal */}
       {showAdd ? (
