@@ -9,17 +9,17 @@ import { Prisma } from "@prisma/client";
 export const dynamic = "force-dynamic";
 
 type Params = { id: string };
+type SearchParams = { error?: string; ring?: string; name?: string; loftId?: string };
 
 export default async function EditBirdPage({
   params,
   searchParams,
 }: {
   params: Promise<Params>;
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<SearchParams>;
 }) {
   const { id } = await params;
   const sp = (await searchParams) ?? {};
-  const errorParam = sp.error ?? "";
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect("/auth");
@@ -30,14 +30,17 @@ export default async function EditBirdPage({
   });
   if (!user) redirect("/auth");
 
-  const bird = await prisma.bird.findUnique({
-    where: { id },
-    include: { loft: true },
+  // ✅ IMPORTANT: do not allow editing soft-deleted birds
+  const bird = await prisma.bird.findFirst({
+    where: { id, ownerId: user.id, deletedAt: null },
+    select: { id: true, ring: true, name: true, loftId: true },
   });
-  if (!bird || bird.ownerId !== user.id) notFound();
 
+  if (!bird) notFound();
+
+  // ✅ IMPORTANT: only non-deleted lofts in dropdown
   const lofts = await prisma.loft.findMany({
-    where: { ownerId: user.id },
+    where: { ownerId: user.id, deletedAt: null },
     orderBy: { createdAt: "desc" },
     select: { id: true, name: true },
   });
@@ -54,34 +57,46 @@ export default async function EditBirdPage({
     });
     if (!user) redirect("/auth");
 
-    const ringRaw = String(formData.get("ring") ?? "").trim();
-    const name = String(formData.get("name") ?? "").trim();
+    // ✅ Re-check bird still exists + not deleted + belongs to user
+    const current = await prisma.bird.findFirst({
+      where: { id, ownerId: user.id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!current) notFound();
+
+    const ringRaw = String(formData.get("ring") ?? "");
+    const nameRaw = String(formData.get("name") ?? "");
     const loftIdRaw = String(formData.get("loftId") ?? "").trim();
 
-    if (!ringRaw) {
-      redirect(`/birds/${id}/edit?error=missing_ring`);
-    }
-
     const ring = normaliseRing(ringRaw);
+    const name = nameRaw.trim();
+
+    if (!ring) {
+      redirect(`/birds/${id}/edit?error=${encodeURIComponent("Ring number is required.")}&name=${encodeURIComponent(name)}&loftId=${encodeURIComponent(loftIdRaw)}`);
+    }
 
     if (!isValidRing(ring)) {
-      redirect(`/birds/${id}/edit?error=invalid_ring`);
+      redirect(
+        `/birds/${id}/edit?error=${encodeURIComponent(
+          "Invalid ring format."
+        )}&ring=${encodeURIComponent(ringRaw)}&name=${encodeURIComponent(name)}&loftId=${encodeURIComponent(loftIdRaw)}`
+      );
     }
-
-    // Ensure bird still belongs to user at time of update
-    const current = await prisma.bird.findUnique({
-      where: { id },
-      select: { id: true, ownerId: true },
-    });
-    if (!current || current.ownerId !== user.id) notFound();
 
     let loftId: string | null = null;
     if (loftIdRaw && loftIdRaw !== "none") {
-      const loft = await prisma.loft.findUnique({
-        where: { id: loftIdRaw },
-        select: { id: true, ownerId: true },
+      // ✅ must belong to user + not deleted
+      const loft = await prisma.loft.findFirst({
+        where: { id: loftIdRaw, ownerId: user.id, deletedAt: null },
+        select: { id: true },
       });
-      if (!loft || loft.ownerId !== user.id) notFound();
+      if (!loft) {
+        redirect(
+          `/birds/${id}/edit?error=${encodeURIComponent(
+            "Invalid loft selection."
+          )}&ring=${encodeURIComponent(ringRaw)}&name=${encodeURIComponent(name)}&loftId=${encodeURIComponent(loftIdRaw)}`
+        );
+      }
       loftId = loft.id;
     }
 
@@ -95,24 +110,31 @@ export default async function EditBirdPage({
         },
       });
     } catch (e) {
-      // Unique constraint violation (global ring uniqueness)
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-        redirect(`/birds/${id}/edit?error=ring_taken`);
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === "P2002"
+      ) {
+        // global unique ring conflict
+        redirect(
+          `/birds/${id}/edit?error=${encodeURIComponent(
+            "That ring number already exists. Please use a unique ring."
+          )}&ring=${encodeURIComponent(ringRaw)}&name=${encodeURIComponent(name)}&loftId=${encodeURIComponent(loftIdRaw)}`
+        );
       }
-      throw e;
+
+      redirect(
+        `/birds/${id}/edit?error=${encodeURIComponent(
+          "Failed to save changes. Please try again."
+        )}&ring=${encodeURIComponent(ringRaw)}&name=${encodeURIComponent(name)}&loftId=${encodeURIComponent(loftIdRaw)}`
+      );
     }
 
     redirect(`/birds/${id}`);
   }
 
-  const errorMessage =
-    errorParam === "ring_taken"
-      ? "That ring number already exists. Please use a unique ring."
-      : errorParam === "invalid_ring"
-        ? "Invalid ring format. Please use the correct ring format."
-        : errorParam === "missing_ring"
-          ? "Please enter a ring number."
-          : "";
+  const initialRing = sp.ring ?? bird.ring;
+  const initialName = sp.name ?? (bird.name ?? "");
+  const initialLoftId = sp.loftId ?? (bird.loftId ?? "none");
 
   return (
     <main className="space-y-6">
@@ -148,21 +170,23 @@ export default async function EditBirdPage({
         </div>
       </div>
 
+      {sp.error ? (
+        <p className="text-xs text-red-300 border border-red-900/40 bg-red-950/40 rounded-xl px-3 py-2">
+          {sp.error}
+        </p>
+      ) : null}
+
       <form
         action={updateBird}
         className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4 space-y-4"
       >
-        {errorMessage ? (
-          <div className="text-xs text-red-300 border border-red-900/40 bg-red-950/40 rounded-xl px-3 py-2">
-            {errorMessage}
-          </div>
-        ) : null}
-
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Ring number</label>
+          <label className="block text-xs text-slate-400 mb-1">
+            Ring number
+          </label>
           <input
             name="ring"
-            defaultValue={bird.ring}
+            defaultValue={initialRing}
             className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
             placeholder="e.g. GB 23 A12345"
             maxLength={30}
@@ -170,10 +194,12 @@ export default async function EditBirdPage({
         </div>
 
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Name (optional)</label>
+          <label className="block text-xs text-slate-400 mb-1">
+            Name (optional)
+          </label>
           <input
             name="name"
-            defaultValue={bird.name ?? ""}
+            defaultValue={initialName}
             className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
             placeholder="e.g. Newey"
             maxLength={60}
@@ -184,7 +210,7 @@ export default async function EditBirdPage({
           <label className="block text-xs text-slate-400 mb-1">Loft</label>
           <select
             name="loftId"
-            defaultValue={bird.loftId ?? "none"}
+            defaultValue={initialLoftId}
             className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
           >
             <option value="none">Unassigned</option>

@@ -31,9 +31,17 @@ export default function LoftBirdsList({
   // local view so the list updates instantly without a page refresh
   const [localBirds, setLocalBirds] = useState<LoftBird[]>(birds);
 
+  // keep local list in sync if server sends updated birds
+  useEffect(() => {
+    setLocalBirds(birds);
+  }, [birds]);
+
   // per-row action menu + delete modal
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // inline error banner (instead of alert)
+  const [error, setError] = useState<string | null>(null);
 
   // Close ⋯ menu on outside click + Escape
   useEffect(() => {
@@ -41,7 +49,6 @@ export default function LoftBirdsList({
 
     function onPointerDown(e: MouseEvent | PointerEvent) {
       const target = e.target as HTMLElement | null;
-      // If click is inside any menu wrapper, ignore
       if (target?.closest('[data-loftbird-menu="true"]')) return;
       setMenuOpenId(null);
     }
@@ -81,42 +88,60 @@ export default function LoftBirdsList({
   const reset = () => {
     setQuery("");
     setSortBy("newest");
+    setError(null);
   };
 
   async function moveBird(birdId: string, loftId: string | null) {
-    // close any open menus for a clean UX
     setMenuOpenId(null);
+    setError(null);
 
-    // Optimistic UI: if moving away or unassigning, remove from this list immediately
+    // optimistic remove (because this is "birds in THIS loft")
+    const original = localBirds.find((b) => b.id === birdId) ?? null;
     setLocalBirds((prev) => prev.filter((b) => b.id !== birdId));
 
-    const res = await fetch("/api/birds/move", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ birdId, loftId }),
-    });
-
-    if (!res.ok) {
-      // rollback if it failed
-      setLocalBirds((prev) => {
-        const original = birds.find((b) => b.id === birdId);
-        return original ? [original, ...prev] : prev;
+    try {
+      const res = await fetch("/api/birds/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ birdId, loftId }),
       });
-      alert("Failed to move/unassign bird.");
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || "Failed to move/unassign bird.");
+      }
+    } catch (e) {
+      // rollback
+      if (original) {
+        setLocalBirds((prev) => [original, ...prev]);
+      }
+      setError(e instanceof Error ? e.message : "Failed to move/unassign bird.");
     }
   }
 
   async function deleteBird(birdId: string) {
-    const res = await fetch(`/api/birds?id=${encodeURIComponent(birdId)}`, {
-      method: "DELETE",
-    });
+    setError(null);
 
-    if (!res.ok) {
-      alert("Failed to delete bird.");
-      return;
-    }
-
+    // optimistic remove
+    const original = localBirds.find((b) => b.id === birdId) ?? null;
     setLocalBirds((prev) => prev.filter((b) => b.id !== birdId));
+
+    try {
+      const res = await fetch(`/api/birds?id=${encodeURIComponent(birdId)}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || "Failed to delete bird.");
+      }
+    } catch (e) {
+      // rollback
+      if (original) {
+        setLocalBirds((prev) => [original, ...prev]);
+      }
+      setError(e instanceof Error ? e.message : "Failed to delete bird.");
+    }
   }
 
   return (
@@ -127,12 +152,11 @@ export default function LoftBirdsList({
             Birds in this loft
           </h2>
           <p className="text-xs text-slate-400">
-            Search by ring/name, click a bird to open its dashboard, or
-            move/unassign it inline.
+            Search by ring/name, click a bird to open its dashboard, or move/unassign it inline.
           </p>
         </div>
 
-        {(query.trim() || sortBy !== "newest") ? (
+        {(query.trim() || sortBy !== "newest" || error) ? (
           <button
             type="button"
             onClick={reset}
@@ -142,6 +166,12 @@ export default function LoftBirdsList({
           </button>
         ) : null}
       </div>
+
+      {error ? (
+        <p className="text-xs text-red-300 border border-red-900/40 bg-red-950/40 rounded-xl px-3 py-2">
+          {error}
+        </p>
+      ) : null}
 
       {/* Controls */}
       <div className="grid md:grid-cols-6 gap-3">
@@ -175,9 +205,7 @@ export default function LoftBirdsList({
           Showing{" "}
           <span className="text-slate-100 font-semibold">{filtered.length}</span>{" "}
           of{" "}
-          <span className="text-slate-100 font-semibold">
-            {localBirds.length}
-          </span>{" "}
+          <span className="text-slate-100 font-semibold">{localBirds.length}</span>{" "}
           birds
         </span>
       </div>
@@ -201,13 +229,11 @@ export default function LoftBirdsList({
                 >
                   <div className="text-sm text-slate-100">
                     {b.ring}
-                    {b.name ? (
-                      <span className="text-slate-400"> – {b.name}</span>
-                    ) : null}
+                    {b.name ? <span className="text-slate-400"> – {b.name}</span> : null}
                   </div>
                 </Link>
 
-                {/* Move / Unassign (primary action on this screen) */}
+                {/* Move / Unassign */}
                 <select
                   defaultValue=""
                   onChange={(e) => {
@@ -236,13 +262,11 @@ export default function LoftBirdsList({
                     ))}
                 </select>
 
-                {/* Secondary actions live in a ⋯ menu to reduce clutter */}
+                {/* Secondary actions */}
                 <div className="relative" data-loftbird-menu="true">
                   <button
                     type="button"
-                    onClick={() =>
-                      setMenuOpenId(menuOpenId === b.id ? null : b.id)
-                    }
+                    onClick={() => setMenuOpenId(menuOpenId === b.id ? null : b.id)}
                     className="px-2 py-1 text-slate-400 hover:text-slate-100"
                     aria-label="More actions"
                   >

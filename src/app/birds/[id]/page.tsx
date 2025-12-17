@@ -26,18 +26,31 @@ export default async function BirdDashboardPage({
   });
   if (!user) redirect("/auth");
 
-  const bird = await prisma.bird.findUnique({
-    where: { id: birdId },
-    include: { loft: true },
+  // ✅ IMPORTANT: exclude soft-deleted bird
+  const bird = await prisma.bird.findFirst({
+    where: { id: birdId, ownerId: user.id, deletedAt: null },
+    include: {
+      loft: {
+        select: {
+          id: true,
+          name: true,
+          deletedAt: true,
+        },
+      },
+    },
   });
 
-const lofts = await prisma.loft.findMany({
-  where: { ownerId: user.id },
-  orderBy: { name: "asc" },
-  select: { id: true, name: true },
-});
+  if (!bird) notFound();
 
-  if (!bird || bird.ownerId !== user.id) notFound();
+  // ✅ IMPORTANT: only show non-deleted lofts in assign dropdown
+  const lofts = await prisma.loft.findMany({
+    where: { ownerId: user.id, deletedAt: null },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
+  // ✅ If loft is deleted (or missing), treat as unassigned in UI
+  const loftIsValid = !!bird.loft && bird.loft.deletedAt === null;
 
   return (
     <main className="space-y-6">
@@ -65,22 +78,26 @@ const lofts = await prisma.loft.findMany({
             <p className="text-sm text-slate-300">Bird dashboard / profile</p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
             <Link
               href={`/birds/${bird.id}/edit`}
               className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
             >
               Edit
             </Link>
+
             <AssignLoftButton
-            birdId={bird.id}
-            lofts={lofts}
-            currentLoftId={bird.loftId}
+              birdId={bird.id}
+              lofts={lofts}
+              // If loft is deleted, treat as unassigned so button label + default selection are correct
+              currentLoftId={loftIsValid ? bird.loftId : null}
             />
+
             <DeleteBirdButton
-            birdId={bird.id}
-            birdLabel={bird.name ? `${bird.ring} (${bird.name})` : bird.ring}
+              birdId={bird.id}
+              birdLabel={bird.name ? `${bird.ring} (${bird.name})` : bird.ring}
             />
+
             <Link
               href="/birds"
               className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
@@ -106,12 +123,13 @@ const lofts = await prisma.loft.findMany({
 
         <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
           <p className="text-xs text-slate-400">Loft</p>
-          {bird.loft ? (
+
+          {loftIsValid ? (
             <Link
-              href={`/lofts/${bird.loft.id}`}
+              href={`/lofts/${bird.loft!.id}`}
               className="text-lg font-semibold text-sky-300 hover:underline"
             >
-              {bird.loft.name}
+              {bird.loft!.name}
             </Link>
           ) : (
             <p className="text-lg font-semibold text-slate-50">Unassigned</p>

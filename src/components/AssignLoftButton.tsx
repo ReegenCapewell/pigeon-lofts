@@ -23,7 +23,6 @@ export default function AssignLoftButton({
   const defaultLoft = useMemo(() => lofts[0]?.id ?? "none", [lofts]);
 
   useEffect(() => {
-    // Default selection when opening
     if (!open) return;
     setError(null);
     setLoftId(currentLoftId ?? defaultLoft);
@@ -32,7 +31,14 @@ export default function AssignLoftButton({
   async function assign() {
     setError(null);
 
-// "none" means unassigned - allowed
+    // Guard: allow "none" (unassigned) OR an existing loft id from the dropdown list
+    const isValid =
+      loftId === "none" || lofts.some((l) => l.id === loftId);
+
+    if (!isValid) {
+      setError("Please choose a valid loft (or Unassigned).");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -40,7 +46,10 @@ export default function AssignLoftButton({
       const res = await fetch("/api/birds/assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ birdId, loftId: loftId === "none" ? null : loftId }),
+        body: JSON.stringify({
+          birdId,
+          loftId: loftId === "none" ? null : loftId,
+        }),
       });
 
       if (!res.ok) {
@@ -49,7 +58,7 @@ export default function AssignLoftButton({
       }
 
       setOpen(false);
-      router.refresh(); // server page will re-fetch bird + loft
+      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to assign loft");
     } finally {
@@ -80,9 +89,7 @@ export default function AssignLoftButton({
           <div className="relative w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 p-4">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
-                <h3 className="text-lg font-semibold text-slate-50">
-                  {label}
-                </h3>
+                <h3 className="text-lg font-semibold text-slate-50">{label}</h3>
                 <p className="text-xs text-slate-400">
                   Choose which loft this bird belongs to.
                 </p>
@@ -99,28 +106,25 @@ export default function AssignLoftButton({
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Loft
-                </label>
+                <label className="block text-xs text-slate-400 mb-1">Loft</label>
                 <select
-  value={loftId}
-  onChange={(e) => setLoftId(e.target.value)}
-  className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
->
-  <option value="none">Unassigned</option>
-
-  {lofts.length === 0 ? (
-    <option value="none" disabled>
-      No lofts found
-    </option>
-  ) : (
-    lofts.map((l) => (
-      <option key={l.id} value={l.id}>
-        {l.name}
-      </option>
-    ))
-  )}
-</select>
+                  value={loftId}
+                  onChange={(e) => setLoftId(e.target.value)}
+                  className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+                >
+                  <option value="none">Unassigned</option>
+                  {lofts.length === 0 ? (
+                    <option value="none" disabled>
+                      No lofts found
+                    </option>
+                  ) : (
+                    lofts.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
 
               {error ? (

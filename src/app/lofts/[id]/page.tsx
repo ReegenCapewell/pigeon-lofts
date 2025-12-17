@@ -26,27 +26,36 @@ export default async function LoftDashboardPage({
   });
   if (!user) redirect("/auth");
 
-  const loft = await prisma.loft.findUnique({
-    where: { id: loftId },
-    include: { birds: { orderBy: { createdAt: "desc" } } },
+  // ✅ Loft must exist, belong to user, and not be soft-deleted
+  const loft = await prisma.loft.findFirst({
+    where: {
+      id: loftId,
+      ownerId: user.id,
+      deletedAt: null,
+    },
+    include: {
+      birds: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: "desc" },
+      },
+    },
   });
 
-  if (!loft || loft.ownerId !== user.id) notFound();
+  if (!loft) notFound();
 
-  // Options for "Move..." dropdown in LoftBirdsList
+  // ✅ Only show non-deleted lofts as move targets
   const loftOptions = await prisma.loft.findMany({
-    where: { ownerId: user.id },
+    where: { ownerId: user.id, deletedAt: null },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
 
-  // Hygiene reminder: unassigned birds (overall, across all lofts)
+  // ✅ Only count non-deleted birds
   const unassignedCount = await prisma.bird.count({
-    where: { ownerId: user.id, loftId: null },
+    where: { ownerId: user.id, loftId: null, deletedAt: null },
   });
 
   const newestBird = loft.birds[0] ?? null;
-  const recentBirds = loft.birds.slice(0, 5);
 
   return (
     <main className="space-y-6">
@@ -64,31 +73,29 @@ export default async function LoftDashboardPage({
         </nav>
 
         <div className="flex items-start justify-between gap-4">
-  <div>
-    <h1 className="text-2xl font-semibold text-slate-50">{loft.name}</h1>
-    <p className="text-sm text-slate-300">Loft dashboard</p>
-  </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-50">{loft.name}</h1>
+            <p className="text-sm text-slate-300">Loft dashboard</p>
+          </div>
 
-  <div className="flex flex-wrap items-center justify-end gap-2">
-    <Link
-      href={`/lofts/${loft.id}/edit`}
-      className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
-    >
-      Edit
-    </Link>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Link
+              href={`/lofts/${loft.id}/edit`}
+              className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
+            >
+              Edit
+            </Link>
 
-    {/* If you're using DeleteLoftButton on the dashboard, keep it inline here */}
-    <DeleteLoftButton loftId={loft.id} loftLabel={loft.name} />
+            <DeleteLoftButton loftId={loft.id} loftLabel={loft.name} />
 
-    <Link
-      href="/lofts"
-      className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
-    >
-      Back to lofts
-    </Link>
-  </div>
-</div>
-
+            <Link
+              href="/lofts"
+              className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
+            >
+              Back to lofts
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Key stats */}

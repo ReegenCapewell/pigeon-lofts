@@ -28,24 +28,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing birdId" }, { status: 400 });
   }
 
-  const bird = await prisma.bird.findUnique({
-    where: { id: birdId },
-    select: { id: true, ownerId: true },
+  // Bird must belong to user AND not be deleted
+  const bird = await prisma.bird.findFirst({
+    where: { id: birdId, ownerId: user.id, deletedAt: null },
+    select: { id: true },
   });
 
-  if (!bird || bird.ownerId !== user.id) {
+  if (!bird) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // If loftId is provided, ensure that loft belongs to the same user
+  // If loftId is provided, ensure loft belongs to the same user AND isn't deleted
   if (loftId) {
-    const loft = await prisma.loft.findUnique({
-      where: { id: loftId },
-      select: { id: true, ownerId: true },
+    const loft = await prisma.loft.findFirst({
+      where: { id: loftId, ownerId: user.id, deletedAt: null },
+      select: { id: true },
     });
 
-    if (!loft || loft.ownerId !== user.id) {
-      return NextResponse.json({ error: "Invalid loft" }, { status: 400 });
+    if (!loft) {
+      return NextResponse.json({ error: "Invalid loft" }, { status: 403 });
     }
   }
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import ConfirmModal from "@/components/ConfirmModal";
 import ListSkeleton from "@/components/ListSkeleton";
+import InlineError from "@/components/InlineError";
 
 type Loft = { id: string; name: string };
 
@@ -37,10 +38,13 @@ export default function BirdsPage() {
   const [assignLoftId, setAssignLoftId] = useState<string>("none");
   const [assignError, setAssignError] = useState<string | null>(null);
   const [assignSaving, setAssignSaving] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
+  
 
 
 async function load() {
   setLoading(true);
+  
 
   // Birds
   try {
@@ -73,22 +77,25 @@ async function load() {
 
 async function deleteBird(id: string) {
   try {
+    setPageError(null);
+
     const res = await fetch(`/api/birds?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
 
     if (!res.ok) {
-      const msg = (await res.text()).trim();
+      const msg = await res.text();
       throw new Error(msg || "Failed to delete bird");
     }
 
     setBirds((prev) => prev.filter((b) => b.id !== id));
-  } catch (e) {
-    setAssignError(e instanceof Error ? e.message : "Failed to delete bird");
+  } catch {
+    setPageError("Failed to delete bird. Please try again.");
   } finally {
     setDeleteId(null);
   }
 }
+
 
 async function assignBirdToLoft(birdId: string, loftId: string) {
   setAssignError(null);
@@ -102,6 +109,7 @@ async function assignBirdToLoft(birdId: string, loftId: string) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ birdId, loftId }),
     });
+    
 
     if (!res.ok) {
       const msg = await res.text();
@@ -236,6 +244,8 @@ if (!res.ok) {
             Search by ring/name and filter by loft.
           </p>
         </div>
+
+        {pageError ? <InlineError message={pageError} /> : null}
 
         <div className="flex gap-2">
           <button
