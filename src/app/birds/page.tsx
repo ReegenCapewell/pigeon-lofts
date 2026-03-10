@@ -228,20 +228,96 @@ export default function BirdsPage() {
   }
 
   return (
-    <main className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">
+    <main>
+      {/* Header */}
+      <div className="flex items-end justify-between gap-4 pb-8 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+            Manage
+          </p>
+          <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">
             Birds
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Search by ring/name and filter by loft.
-          </p>
         </div>
 
-        {pageError ? <InlineError message={pageError} /> : null}
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            setNewRing("");
+            setNewName("");
+            setNewLoftId("none");
+            setShowAdd(true);
+          }}
+          className="text-sm px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition"
+        >
+          + Add bird
+        </button>
+      </div>
 
-        <div className="flex gap-2">
+      {pageError ? (
+        <div className="pt-4">
+          <InlineError message={pageError} />
+        </div>
+      ) : null}
+
+      {/* Filter bar */}
+      <div className="py-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search ring or name…"
+          className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none focus:border-emerald-500 transition"
+        />
+        <div className="flex items-center gap-3">
+          <select
+            value={loftFilter}
+            onChange={(e) => setLoftFilter(e.target.value)}
+            className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
+          >
+            <option value="all">All lofts</option>
+            <option value="unassigned">Unassigned</option>
+            {lofts.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as "newest" | "ring")}
+            className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
+          >
+            <option value="newest">Newest first</option>
+            <option value="ring">Ring (A→Z)</option>
+          </select>
+          {(query.trim() || loftFilter !== "all" || sortBy !== "newest") && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-xs text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition whitespace-nowrap"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Counts */}
+      <p className="text-xs text-slate-400 dark:text-slate-500 py-3 border-b border-slate-100 dark:border-slate-800">
+        {loading ? "Loading…" : (
+          <>{filtered.length} of {birds.length} bird{birds.length !== 1 ? "s" : ""}</>
+        )}
+      </p>
+
+      {/* List */}
+      {loading ? (
+        <div className="pt-4">
+          <ListSkeleton rows={6} />
+        </div>
+      ) : birds.length === 0 ? (
+        <div className="py-16 text-center">
+          <p className="text-slate-400 dark:text-slate-500 text-sm mb-4">No birds yet. Add one to get started.</p>
           <button
             type="button"
             onClick={() => {
@@ -255,261 +331,104 @@ export default function BirdsPage() {
           >
             + Add bird
           </button>
-
-          <Link
-            href="/birds"
-            className="text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
-            onClick={(e) => {
-              if (
-                typeof window !== "undefined" &&
-                window.location.pathname === "/birds"
-              ) {
-                e.preventDefault();
-                clearFilters();
-              }
-            }}
-          >
-            Clear
-          </Link>
         </div>
-      </div>
+      ) : filtered.length === 0 ? (
+        <p className="py-8 text-sm text-slate-400 dark:text-slate-500">No birds match your search.</p>
+      ) : (
+        <ul>
+          {filtered.map((b) => (
+            <li key={b.id} className="group border-b border-slate-100 dark:border-slate-800 last:border-0 relative">
+              <div className="flex items-center gap-3 py-3.5 -mx-1 px-1">
+                <Link
+                  href={`/birds/${b.id}`}
+                  className="flex-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 -mx-2 px-2 py-1.5 transition"
+                >
+                  <div className="text-sm font-medium text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                    {b.ring}
+                    {b.name ? (
+                      <span className="text-slate-400 dark:text-slate-500 font-normal">
+                        {" "}– {b.name}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="text-[11px] mt-0.5">
+                    {b.loft?.name ? (
+                      <span className="text-slate-400 dark:text-slate-500">
+                        {b.loft.name}
+                      </span>
+                    ) : (
+                      <span className="text-amber-500 dark:text-amber-400">
+                        Unassigned
+                      </span>
+                    )}
+                  </div>
+                </Link>
 
-      {/* Controls */}
-      <section className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-        <div className="grid md:grid-cols-6 gap-3">
-          <div className="md:col-span-3">
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-              Search (ring or name)
-            </label>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g. GB 23… or Newey"
-              className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 px-3 py-2 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-              Loft
-            </label>
-            <select
-              value={loftFilter}
-              onChange={(e) => setLoftFilter(e.target.value)}
-              className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 px-3 py-2 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
-            >
-              <option value="all">All lofts</option>
-              <option value="unassigned">Unassigned</option>
-              {lofts.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-1">
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-              Sort
-            </label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as "newest" | "ring")}
-              className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 px-3 py-2 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
-            >
-              <option value="newest">Newest</option>
-              <option value="ring">Ring (A→Z)</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between mt-3 text-xs text-slate-500 dark:text-slate-400">
-          <span>
-            Showing{" "}
-            <span className="text-slate-900 dark:text-slate-100 font-semibold">
-              {filtered.length}
-            </span>{" "}
-            of{" "}
-            <span className="text-slate-900 dark:text-slate-100 font-semibold">
-              {birds.length}
-            </span>{" "}
-            birds
-          </span>
-
-          {(query.trim() || loftFilter !== "all" || sortBy !== "newest") && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
-            >
-              Reset
-            </button>
-          )}
-        </div>
-      </section>
-
-      {/* List */}
-      <section className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">
-          Bird list
-        </h2>
-
-        {loading ? (
-          <ListSkeleton rows={6} />
-        ) : birds.length === 0 ? (
-          <div className="border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-400">
-            <p className="mb-1">No birds yet.</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
-              Add your first bird to start tracking rings, lofts, and profiles.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => {
-                setError(null);
-                setNewRing("");
-                setNewName("");
-                setNewLoftId("none");
-                setShowAdd(true);
-              }}
-              className="text-sm px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition"
-            >
-              + Add bird
-            </button>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-400">
-            <p className="mb-1">No birds match your search/filter.</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              Try clearing filters or search by ring number.
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {filtered.map((b) => (
-              <li key={b.id} className="relative">
-                <div className="flex items-center justify-between gap-3 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 rounded-xl px-3 py-2.5 hover:border-emerald-400 dark:hover:border-emerald-700 transition">
-                  <Link
-                    href={`/birds/${b.id}`}
-                    className="flex-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
-                  >
-                    <div className="text-sm text-slate-800 dark:text-slate-100">
-                      {b.ring}
-                      {b.name ? (
-                        <span className="text-slate-400 dark:text-slate-500">
-                          {" "}
-                          – {b.name}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <div className="text-[11px] mt-0.5">
-                      {b.loft?.name ? (
-                        <span className="text-slate-400 dark:text-slate-500">
-                          Loft: {b.loft.name}
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setAssignError(null);
-                            setAssignLoftId(lofts[0]?.id ?? "none");
-                            setAssignId(b.id);
-                            setMenuOpenId(null);
-                            setDeleteId(null);
-                          }}
-                          className="inline-flex items-center gap-1 rounded-full border border-amber-300/60 dark:border-amber-400/40 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-amber-600 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition"
-                        >
-                          Unassigned
-                          <span className="text-[10px] opacity-70">
-                            · Assign to loft
-                          </span>
-                        </button>
-                      )}
-                    </div>
-                  </Link>
-
+                {!b.loftId && (
                   <button
-                    onClick={() =>
-                      setMenuOpenId(menuOpenId === b.id ? null : b.id)
-                    }
-                    className="px-2 py-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                    type="button"
+                    onClick={() => {
+                      setAssignError(null);
+                      setAssignLoftId(lofts[0]?.id ?? "none");
+                      setAssignId(b.id);
+                      setMenuOpenId(null);
+                    }}
+                    className="text-xs px-3 py-1 rounded-full border border-amber-300/60 dark:border-amber-400/40 text-amber-600 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition"
+                  >
+                    Assign loft
+                  </button>
+                )}
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpenId(menuOpenId === b.id ? null : b.id)}
+                    className="w-7 h-7 flex items-center justify-center rounded-md text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    aria-label="Bird actions"
                   >
                     ⋯
                   </button>
 
                   {menuOpenId === b.id && (
-                    <div className="absolute right-2 top-10 z-20 w-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg shadow-black/10 dark:shadow-slate-950/50">
-                      {!b.loftId && (
-                        <button
-                          onClick={() => {
-                            setMenuOpenId(null);
-                            setAssignError(null);
-                            setAssignLoftId(lofts[0]?.id ?? "none");
-                            setAssignId(b.id);
-                          }}
-                          className="block w-full text-left px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-t-xl transition"
-                        >
-                          Assign loft
-                        </button>
-                      )}
-
+                    <div className="absolute right-0 top-9 z-20 w-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg shadow-black/10 dark:shadow-slate-950/60 py-1">
                       <Link
                         href={`/birds/${b.id}/edit`}
-                        className="block px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                        className="block px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                        onClick={() => setMenuOpenId(null)}
                       >
                         Edit
                       </Link>
-
                       <button
+                        type="button"
                         onClick={() => {
                           setMenuOpenId(null);
                           setDeleteId(b.id);
                         }}
-                        className="block w-full text-left px-3 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-b-xl transition"
+                        className="block w-full text-left px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
                       >
                         Delete
                       </button>
                     </div>
                   )}
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* Add Bird Modal */}
       {showAdd ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/50 dark:bg-black/70"
-            onClick={() => {
-              if (!saving) setShowAdd(false);
-            }}
+            className="absolute inset-0 bg-black/40 dark:bg-black/60"
+            onClick={() => { if (!saving) setShowAdd(false); }}
           />
-          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 p-5 shadow-xl shadow-black/10 dark:shadow-black/50">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                  Add bird
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Add a bird and optionally assign it to a loft.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAdd(false)}
-                disabled={saving}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
-              >
-                ✕
-              </button>
-            </div>
+          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 p-6 shadow-2xl shadow-black/10 dark:shadow-black/50">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50 mb-1">Add bird</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">Add a bird and optionally assign it to a loft.</p>
 
-            <form onSubmit={submitNewBird} className="space-y-3">
+            <form onSubmit={submitNewBird} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
                   Ring number
@@ -517,7 +436,7 @@ export default function BirdsPage() {
                 <input
                   value={newRing}
                   onChange={(e) => setNewRing(e.target.value)}
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
                   placeholder="e.g. GB 23 A12345"
                   maxLength={30}
                   autoFocus
@@ -531,7 +450,7 @@ export default function BirdsPage() {
                 <input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
                   placeholder="e.g. Newey"
                   maxLength={60}
                 />
@@ -544,7 +463,7 @@ export default function BirdsPage() {
                 <select
                   value={newLoftId}
                   onChange={(e) => setNewLoftId(e.target.value)}
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
                 >
                   <option value="none">Unassigned</option>
                   {lofts.map((l) => (
@@ -556,12 +475,12 @@ export default function BirdsPage() {
               </div>
 
               {error ? (
-                <p className="text-xs text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/40 rounded-xl px-3 py-2">
+                <p className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 rounded-xl px-3 py-2">
                   {error}
                 </p>
               ) : null}
 
-              <div className="flex gap-2 justify-end pt-1">
+              <div className="flex gap-2 justify-end">
                 <button
                   type="button"
                   onClick={() => setShowAdd(false)}
@@ -586,11 +505,7 @@ export default function BirdsPage() {
       <ConfirmModal
         open={!!deleteId}
         title="Delete bird?"
-        message={
-          assignError
-            ? `This action cannot be undone.\n\n${assignError}`
-            : "This action cannot be undone."
-        }
+        message="This action cannot be undone."
         confirmLabel="Delete bird"
         onCancel={() => setDeleteId(null)}
         onConfirm={() => deleteId && deleteBird(deleteId)}
@@ -600,32 +515,14 @@ export default function BirdsPage() {
       {assignId ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/50 dark:bg-black/70"
-            onClick={() => {
-              if (!assignSaving) setAssignId(null);
-            }}
+            className="absolute inset-0 bg-black/40 dark:bg-black/60"
+            onClick={() => { if (!assignSaving) setAssignId(null); }}
           />
-          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 p-5 shadow-xl shadow-black/10 dark:shadow-black/50">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                  Assign loft
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Choose which loft this bird belongs to.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAssignId(null)}
-                disabled={assignSaving}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
-              >
-                ✕
-              </button>
-            </div>
+          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 p-6 shadow-2xl shadow-black/10 dark:shadow-black/50">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50 mb-1">Assign loft</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">Choose which loft this bird belongs to.</p>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
                   Loft
@@ -633,7 +530,7 @@ export default function BirdsPage() {
                 <select
                   value={assignLoftId}
                   onChange={(e) => setAssignLoftId(e.target.value)}
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
                 >
                   {lofts.length === 0 ? (
                     <option value="none">No lofts found</option>
@@ -653,7 +550,7 @@ export default function BirdsPage() {
                 </p>
               ) : null}
 
-              <div className="flex justify-end gap-2 pt-1">
+              <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setAssignId(null)}
@@ -662,14 +559,9 @@ export default function BirdsPage() {
                 >
                   Cancel
                 </button>
-
                 <button
                   type="button"
-                  disabled={
-                    assignSaving ||
-                    lofts.length === 0 ||
-                    assignLoftId === "none"
-                  }
+                  disabled={assignSaving || lofts.length === 0 || assignLoftId === "none"}
                   onClick={() => assignBirdToLoft(assignId, assignLoftId)}
                   className="text-sm px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition disabled:opacity-50"
                 >

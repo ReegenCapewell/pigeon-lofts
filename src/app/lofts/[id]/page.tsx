@@ -55,130 +55,111 @@ export default async function LoftDashboardPage({
   const newestBird = loft.birds[0] ?? null;
 
   return (
-    <main className="space-y-6">
-      <div className="space-y-2">
-        <nav className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+    <main>
+      {/* Breadcrumb */}
+      <nav className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-6">
+        <Link href="/" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">
+          Dashboard
+        </Link>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <Link href="/lofts" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">
+          Lofts
+        </Link>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <span className="text-slate-700 dark:text-slate-200">{loft.name}</span>
+      </nav>
+
+      {/* Header */}
+      <div className="flex items-end justify-between gap-4 pb-8 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+            Loft
+          </p>
+          <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">
+            {loft.name}
+          </h1>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Link
-            href="/"
-            className="hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+            href={`/lofts/${loft.id}/edit`}
+            className="text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
           >
-            Dashboard
+            Edit
           </Link>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
+          <DeleteLoftButton loftId={loft.id} loftLabel={loft.name} />
           <Link
             href="/lofts"
-            className="hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+            className="text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
           >
-            Lofts
+            ← Back
           </Link>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
-          <span className="text-slate-700 dark:text-slate-200">{loft.name}</span>
-        </nav>
-
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">
-              {loft.name}
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Loft dashboard
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Link
-              href={`/lofts/${loft.id}/edit`}
-              className="text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
-            >
-              Edit
-            </Link>
-
-            <DeleteLoftButton loftId={loft.id} loftLabel={loft.name} />
-
-            <Link
-              href="/lofts"
-              className="text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
-            >
-              Back to lofts
-            </Link>
-          </div>
         </div>
       </div>
 
-      {/* Key stats */}
-      <section className="grid md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Total birds in this loft
+      {/* Stats */}
+      <div className="py-8 border-b border-slate-100 dark:border-slate-800 flex flex-wrap gap-12">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+            Birds in loft
           </p>
-          <p className="text-3xl font-semibold text-slate-900 dark:text-slate-50 mt-1">
+          <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">
             {loft.birds.length}
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Unassigned birds (overall)
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+            Unassigned
           </p>
-          <p className="text-3xl font-semibold text-slate-900 dark:text-slate-50 mt-1">
+          <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">
             {unassignedCount}
           </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-            Tip: assign them from the Birds page.
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+            Assign from the Birds page
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Newest bird in this loft
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+            Newest bird
           </p>
-
           {newestBird ? (
             <Link
               href={`/birds/${newestBird.id}`}
-              className="mt-2 inline-block hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+              className="hover:text-emerald-600 dark:hover:text-emerald-400 transition"
             >
-              <div className="text-sm text-slate-800 dark:text-slate-100 font-medium">
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mt-1">
                 {newestBird.ring}
                 {newestBird.name ? (
                   <span className="text-slate-400 dark:text-slate-500 font-normal">
-                    {" "}
-                    – {newestBird.name}
+                    {" "}– {newestBird.name}
                   </span>
                 ) : null}
-              </div>
-              <div className="text-[11px] text-slate-400 dark:text-slate-500">
-                Added: {new Date(newestBird.createdAt).toLocaleDateString()}
-              </div>
+              </p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                Added {new Date(newestBird.createdAt).toLocaleDateString()}
+              </p>
             </Link>
           ) : (
-            <p className="text-sm text-slate-400 dark:text-slate-500 mt-2">
-              No birds yet.
-            </p>
+            <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">None yet</p>
           )}
         </div>
+      </div>
 
-        <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Coming soon
-          </p>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-2">
-            Medical & race insights will appear here.
-          </p>
-        </div>
-      </section>
-
-      {/* Birds list with search/sort + inline actions */}
-      <LoftBirdsList
-        currentLoftId={loft.id}
-        loftOptions={loftOptions}
-        birds={loft.birds.map((b) => ({
-          id: b.id,
-          ring: b.ring,
-          name: b.name ?? null,
-          createdAt: b.createdAt.toISOString(),
-        }))}
-      />
+      {/* Birds list */}
+      <div className="pt-8">
+        <LoftBirdsList
+          currentLoftId={loft.id}
+          loftOptions={loftOptions}
+          birds={loft.birds.map((b) => ({
+            id: b.id,
+            ring: b.ring,
+            name: b.name ?? null,
+            createdAt: b.createdAt.toISOString(),
+          }))}
+        />
+      </div>
     </main>
   );
 }

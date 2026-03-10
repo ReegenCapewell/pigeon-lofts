@@ -135,23 +135,22 @@ export default function LoftBirdsList({
   }
 
   return (
-    <section className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-4">
-      <div className="flex items-start justify-between gap-4">
+    <div>
+      {/* Section header */}
+      <div className="flex items-center justify-between gap-4 pb-5 border-b border-slate-100 dark:border-slate-800">
         <div>
-          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Birds in this loft
-          </h2>
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+            Birds
+          </p>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Search by ring/name, click a bird to open its dashboard, or
-            move/unassign it inline.
+            Click a bird to open its dashboard, or move/unassign inline.
           </p>
         </div>
-
-        {query.trim() || sortBy !== "newest" || error ? (
+        {(query.trim() || sortBy !== "newest" || error) ? (
           <button
             type="button"
             onClick={reset}
-            className="text-xs px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+            className="text-xs text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition whitespace-nowrap"
           >
             Reset
           </button>
@@ -159,84 +158,60 @@ export default function LoftBirdsList({
       </div>
 
       {error ? (
-        <p className="text-xs text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/40 rounded-xl px-3 py-2">
+        <p className="mt-4 text-xs text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/40 rounded-xl px-3 py-2">
           {error}
         </p>
       ) : null}
 
-      {/* Controls */}
-      <div className="grid md:grid-cols-6 gap-3">
-        <div className="md:col-span-5">
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-            Search (ring or name)
-          </label>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="e.g. GB 23… or Newey"
-            className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 px-3 py-2 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
-          />
-        </div>
-
-        <div className="md:col-span-1">
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-            Sort
-          </label>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "newest" | "ring")}
-            className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 px-3 py-2 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
-          >
-            <option value="newest">Newest</option>
-            <option value="ring">Ring (A→Z)</option>
-          </select>
-        </div>
+      {/* Filter bar */}
+      <div className="py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search ring or name…"
+          className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none focus:border-emerald-500 transition"
+        />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as "newest" | "ring")}
+          className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
+        >
+          <option value="newest">Newest first</option>
+          <option value="ring">Ring (A→Z)</option>
+        </select>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-        <span>
-          Showing{" "}
-          <span className="text-slate-900 dark:text-slate-100 font-semibold">
-            {filtered.length}
-          </span>{" "}
-          of{" "}
-          <span className="text-slate-900 dark:text-slate-100 font-semibold">
-            {localBirds.length}
-          </span>{" "}
-          birds
-        </span>
-      </div>
+      {/* Count */}
+      <p className="text-xs text-slate-400 dark:text-slate-500 py-3 border-b border-slate-100 dark:border-slate-800">
+        {filtered.length} of {localBirds.length} bird{localBirds.length !== 1 ? "s" : ""}
+      </p>
 
       {/* List */}
       {localBirds.length === 0 ? (
-        <p className="text-xs text-slate-400 dark:text-slate-500">
+        <p className="py-8 text-sm text-slate-400 dark:text-slate-500">
           No birds assigned yet.
         </p>
       ) : filtered.length === 0 ? (
-        <div className="border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-400">
-          <p className="mb-1">No birds match your search.</p>
-          <p className="text-xs text-slate-400 dark:text-slate-500">
-            Try clearing the search box.
-          </p>
-        </div>
+        <p className="py-8 text-sm text-slate-400 dark:text-slate-500">
+          No birds match your search.
+        </p>
       ) : (
-        <ul className="space-y-2">
+        <ul>
           {filtered.map((b) => (
-            <li key={b.id}>
-              <div className="flex items-center justify-between gap-3 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 rounded-xl px-3 py-2.5 hover:border-emerald-400 dark:hover:border-emerald-700 transition">
+            <li key={b.id} className="group border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <div className="flex items-center gap-3 py-3.5 -mx-1 px-1">
                 <Link
                   href={`/birds/${b.id}`}
-                  className="flex-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+                  className="flex-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 -mx-2 px-2 py-1.5 transition"
                 >
-                  <div className="text-sm text-slate-800 dark:text-slate-100">
+                  <span className="text-sm font-medium text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
                     {b.ring}
                     {b.name ? (
-                      <span className="text-slate-400 dark:text-slate-500">
-                        {" "}
-                        – {b.name}
+                      <span className="text-slate-400 dark:text-slate-500 font-normal">
+                        {" "}– {b.name}
                       </span>
                     ) : null}
-                  </div>
+                  </span>
                 </Link>
 
                 {/* Move / Unassign */}
@@ -254,7 +229,7 @@ export default function LoftBirdsList({
 
                     e.currentTarget.value = "";
                   }}
-                  className="text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-slate-700 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
+                  className="text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-slate-700 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
                   title="Move bird"
                 >
                   <option value="">Move…</option>
@@ -275,17 +250,17 @@ export default function LoftBirdsList({
                     onClick={() =>
                       setMenuOpenId(menuOpenId === b.id ? null : b.id)
                     }
-                    className="px-2 py-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                    className="w-7 h-7 flex items-center justify-center rounded-md text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                     aria-label="More actions"
                   >
                     ⋯
                   </button>
 
                   {menuOpenId === b.id && (
-                    <div className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg shadow-black/10 dark:shadow-slate-950/50">
+                    <div className="absolute right-0 top-9 z-20 w-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg shadow-black/10 dark:shadow-slate-950/50 py-1">
                       <Link
                         href={`/birds/${b.id}/edit`}
-                        className="block px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-t-xl transition"
+                        className="block px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                         onClick={() => setMenuOpenId(null)}
                       >
                         Edit
@@ -297,7 +272,7 @@ export default function LoftBirdsList({
                           setMenuOpenId(null);
                           setDeleteId(b.id);
                         }}
-                        className="block w-full text-left px-3 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-b-xl transition"
+                        className="block w-full text-left px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
                       >
                         Delete
                       </button>
@@ -322,6 +297,6 @@ export default function LoftBirdsList({
           setDeleteId(null);
         }}
       />
-    </section>
+    </div>
   );
 }
