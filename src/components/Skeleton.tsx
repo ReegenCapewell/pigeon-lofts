@@ -6,7 +6,7 @@ export default function Skeleton({
   return (
     <div
       className={[
-        "animate-pulse rounded-xl bg-slate-800/50 border border-slate-700/50",
+        "animate-pulse rounded-xl bg-slate-200/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50",
         className,
       ].join(" ")}
     />
