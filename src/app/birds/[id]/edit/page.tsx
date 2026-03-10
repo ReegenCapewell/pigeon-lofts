@@ -139,104 +139,97 @@ export default async function EditBirdPage({
   const initialLoftId = sp.loftId ?? (bird.loftId ?? "none");
 
   return (
-    <main>
+    <main className="space-y-6">
       {/* Breadcrumb */}
-      <nav className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-6">
-        <Link href="/" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">
-          Dashboard
-        </Link>
+      <nav className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+        <Link href="/" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">Dashboard</Link>
         <span className="text-slate-300 dark:text-slate-600">/</span>
-        <Link href="/birds" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">
-          Birds
-        </Link>
+        <Link href="/birds" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">Birds</Link>
         <span className="text-slate-300 dark:text-slate-600">/</span>
-        <Link href={`/birds/${id}`} className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">
-          {bird.ring}
-        </Link>
+        <Link href={`/birds/${id}`} className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">{bird.ring}</Link>
         <span className="text-slate-300 dark:text-slate-600">/</span>
         <span className="text-slate-700 dark:text-slate-200">Edit</span>
       </nav>
 
-      {/* Header */}
-      <div className="flex items-end justify-between gap-4 pb-8 border-b border-slate-100 dark:border-slate-800">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
-            Bird
-          </p>
-          <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">
-            Edit bird
-          </h1>
-        </div>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Edit bird</h1>
         <Link
           href={`/birds/${id}`}
-          className="text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+          className="text-sm px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm transition"
         >
           Cancel
         </Link>
       </div>
 
       {sp.error ? (
-        <p className="mt-6 text-xs text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/40 rounded-xl px-3 py-2.5">
+        <p className="text-xs text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/40 rounded-xl px-3 py-2.5">
           {sp.error}
         </p>
       ) : null}
 
-      {/* Form */}
-      <form action={updateBird} className="py-8 space-y-5 max-w-md">
-        <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
-            Ring number
-          </label>
-          <input
-            name="ring"
-            defaultValue={initialRing}
-            className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
-            placeholder="e.g. GB 23 A12345"
-            maxLength={30}
-          />
-        </div>
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 max-w-lg">
+        <form action={updateBird} className="space-y-5">
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+              Ring number
+            </label>
+            <input
+              name="ring"
+              defaultValue={initialRing}
+              className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
+              placeholder="e.g. GB 23 A12345"
+              maxLength={30}
+            />
+          </div>
 
-        <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
-            Name (optional)
-          </label>
-          <input
-            name="name"
-            defaultValue={initialName}
-            className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
-            placeholder="e.g. Newey"
-            maxLength={60}
-          />
-        </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+              Name (optional)
+            </label>
+            <input
+              name="name"
+              defaultValue={initialName}
+              className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
+              placeholder="e.g. Newey"
+              maxLength={60}
+            />
+          </div>
 
-        <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
-            Loft
-          </label>
-          <select
-            name="loftId"
-            defaultValue={initialLoftId}
-            className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
-          >
-            <option value="none">Unassigned</option>
-            {lofts.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
-            You can move a bird between lofts here.
-          </p>
-        </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+              Loft
+            </label>
+            <select
+              name="loftId"
+              defaultValue={initialLoftId}
+              className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
+            >
+              <option value="none">Unassigned</option>
+              {lofts.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
+              You can move a bird between lofts here.
+            </p>
+          </div>
 
-        <button
-          type="submit"
-          className="text-sm px-5 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition"
-        >
-          Save changes
-        </button>
-      </form>
+          <div className="flex gap-3 pt-1">
+            <button
+              type="submit"
+              className="text-sm px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium shadow-sm transition"
+            >
+              Save changes
+            </button>
+            <Link
+              href={`/birds/${id}`}
+              className="text-sm px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 transition"
+            >
+              Cancel
+            </Link>
+          </div>
+        </form>
+      </div>
     </main>
   );
 }
