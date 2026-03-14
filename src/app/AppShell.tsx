@@ -3,6 +3,7 @@
 import { ReactNode } from "react";
 import NavLink from "@/components/NavLink";
 import UserMenu from "@/components/UserMenu";
+import ThemeToggle from "@/components/ThemeToggle";
 import { usePathname } from "next/navigation";
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -36,6 +37,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </NavLink>
             </nav>
 
+            <ThemeToggle />
             <UserMenu />
           </div>
         </div>

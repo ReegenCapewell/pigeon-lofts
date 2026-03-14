@@ -38,7 +38,7 @@ model Loft {
 
 model Bird {
   id          String    @id @default(cuid())
-  ring        String    @unique
+  ring        String
   name        String?
   dateOfBirth DateTime?
   loftId      String?
