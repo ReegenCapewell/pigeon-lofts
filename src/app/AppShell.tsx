@@ -9,7 +9,6 @@ import { usePathname } from "next/navigation";
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
-  // Hide header/footer on auth page (prevents logged-out users clicking into app pages)
   const hideChrome = pathname === "/auth";
 
   if (hideChrome) {
@@ -18,38 +17,33 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-slate-800 bg-slate-950/70 backdrop-blur">
-        <div className="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-bold tracking-tight">🐦 LoftTracker</span>
-          </div>
+      <header className="sticky top-0 z-30 border-b border-slate-100 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
+        <div className="mx-auto max-w-4xl px-6 py-3 flex items-center justify-between">
+          <span className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+            LoftTracker
+          </span>
 
-          <div className="flex items-center gap-6">
-            <nav className="flex gap-4 text-sm">
-              <NavLink href="/" exact>
-                Home
-              </NavLink>
-              <NavLink href="/lofts">
-                Lofts
-              </NavLink>
-              <NavLink href="/birds">
-                Birds
-              </NavLink>
+          <div className="flex items-center gap-4">
+            <nav className="flex gap-0.5 text-sm">
+              <NavLink href="/" exact>Home</NavLink>
+              <NavLink href="/lofts">Lofts</NavLink>
+              <NavLink href="/birds">Birds</NavLink>
             </nav>
-
-            <ThemeToggle />
-            <UserMenu />
+            <div className="flex items-center gap-0.5">
+              <ThemeToggle />
+              <UserMenu />
+            </div>
           </div>
         </div>
       </header>
 
       <main className="flex-1">
-        <div className="mx-auto max-w-5xl px-4 py-8">{children}</div>
+        <div className="mx-auto max-w-4xl px-6 py-10">{children}</div>
       </main>
 
-      <footer className="border-t border-slate-800 text-xs text-slate-500">
-        <div className="mx-auto max-w-5xl px-4 py-3">
-          Built for Dad&apos;s racing pigeons 🐦
+      <footer className="text-xs text-slate-400 dark:text-slate-600 border-t border-slate-100 dark:border-slate-800/60">
+        <div className="mx-auto max-w-4xl px-6 py-4">
+          Built for Dad&apos;s racing pigeons
         </div>
       </footer>
     </div>

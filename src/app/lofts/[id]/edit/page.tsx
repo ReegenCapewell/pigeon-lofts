@@ -45,69 +45,52 @@ export default async function EditLoftPage({
     const current = await prisma.loft.findUnique({ where: { id } });
     if (!current || current.ownerId !== user.id) notFound();
 
-    await prisma.loft.update({
-      where: { id },
-      data: { name },
-    });
-
+    await prisma.loft.update({ where: { id }, data: { name } });
     redirect(`/lofts/${id}`);
   }
 
   return (
-    <main className="space-y-6">
-      <div className="space-y-2">
-        <nav className="text-xs text-slate-400">
-          <Link href="/" className="hover:text-sky-300">
-            Dashboard
-          </Link>
-          <span className="mx-2 text-slate-600">/</span>
-          <Link href="/lofts" className="hover:text-sky-300">
-            Lofts
-          </Link>
-          <span className="mx-2 text-slate-600">/</span>
-          <Link href={`/lofts/${id}`} className="hover:text-sky-300">
-            {loft.name}
-          </Link>
-          <span className="mx-2 text-slate-600">/</span>
-          <span className="text-slate-200">Edit</span>
-        </nav>
+    <main>
+      <nav className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-6">
+        <Link href="/" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">Dashboard</Link>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <Link href="/lofts" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">Lofts</Link>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <Link href={`/lofts/${id}`} className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">{loft.name}</Link>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <span className="text-slate-700 dark:text-slate-200">Edit</span>
+      </nav>
 
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-50">Edit loft</h1>
-            <p className="text-sm text-slate-300">Update the loft details.</p>
-          </div>
-
-          <Link
-            href={`/lofts/${id}`}
-            className="text-sm px-4 py-2 rounded-full border border-slate-600 hover:border-sky-500 hover:text-sky-300 transition"
-          >
-            Cancel
-          </Link>
+      <div className="flex items-end justify-between gap-4 pb-8 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">Loft</p>
+          <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">Edit loft</h1>
         </div>
+        <Link
+          href={`/lofts/${id}`}
+          className="text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+        >
+          Cancel
+        </Link>
       </div>
 
-      <form
-        action={updateLoft}
-        className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4 space-y-4"
-      >
+      <form action={updateLoft} className="py-8 space-y-5 max-w-md">
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Loft name</label>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Loft name</label>
           <input
             name="name"
             defaultValue={loft.name}
-            className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+            className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
             placeholder="e.g. Main Loft"
             maxLength={60}
           />
-          <p className="text-[11px] text-slate-500 mt-1">
-            Keep it short and recognisable (e.g. “Main Loft”, “Young Birds”).
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
+            Keep it short and recognisable (e.g. &quot;Main Loft&quot;, &quot;Young Birds&quot;).
           </p>
         </div>
-
         <button
           type="submit"
-          className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-400 text-white font-medium transition"
+          className="text-sm px-5 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition"
         >
           Save changes
         </button>

@@ -40,20 +40,16 @@ export default function DeleteBirdButton({
     }
   }
 
-  const base =
-    birdLabel
-      ? `Delete ${birdLabel}? This action cannot be undone.`
-      : "This action cannot be undone.";
+  const base = birdLabel
+    ? `Delete ${birdLabel}? This action cannot be undone.`
+    : "This action cannot be undone.";
 
   return (
     <>
       <button
         type="button"
-        onClick={() => {
-          setError(null);
-          setOpen(true);
-        }}
-        className="text-sm px-4 py-2 rounded-full border border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:border-red-400 transition"
+        onClick={() => { setError(null); setOpen(true); }}
+        className="text-sm px-4 py-2 rounded-full border border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-500/20 hover:border-red-400 transition"
       >
         Delete
       </button>
@@ -63,9 +59,7 @@ export default function DeleteBirdButton({
         title="Delete bird?"
         message={base + (error ? `\n\n${error}` : "")}
         confirmLabel={saving ? "Deleting…" : "Delete bird"}
-        onCancel={() => {
-          if (!saving) setOpen(false);
-        }}
+        onCancel={() => { if (!saving) setOpen(false); }}
         onConfirm={onConfirm}
       />
     </>

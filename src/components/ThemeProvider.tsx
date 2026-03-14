@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 type Theme = "dark" | "light";
 
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
-  theme: "dark",
+  theme: "light",
   toggle: () => {},
 });
 
@@ -18,11 +18,11 @@ export default function ThemeProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     const stored = localStorage.getItem("theme") as Theme | null;
-    const initial = stored === "light" ? "light" : "dark";
+    const initial = stored === "dark" ? "dark" : "light";
     setTheme(initial);
     if (initial === "dark") {
       document.documentElement.classList.add("dark");

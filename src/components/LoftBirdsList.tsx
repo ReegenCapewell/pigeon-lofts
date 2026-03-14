@@ -8,7 +8,7 @@ export type LoftBird = {
   id: string;
   ring: string;
   name: string | null;
-  createdAt: string; // ISO string
+  createdAt: string;
 };
 
 export type LoftOption = {
@@ -27,23 +27,14 @@ export default function LoftBirdsList({
 }) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "ring">("newest");
-
-  // local view so the list updates instantly without a page refresh
   const [localBirds, setLocalBirds] = useState<LoftBird[]>(birds);
 
-  // keep local list in sync if server sends updated birds
-  useEffect(() => {
-    setLocalBirds(birds);
-  }, [birds]);
+  useEffect(() => { setLocalBirds(birds); }, [birds]);
 
-  // per-row action menu + delete modal
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  // inline error banner (instead of alert)
   const [error, setError] = useState<string | null>(null);
 
-  // Close ⋯ menu on outside click + Escape
   useEffect(() => {
     if (!menuOpenId) return;
 
@@ -52,14 +43,12 @@ export default function LoftBirdsList({
       if (target?.closest('[data-loftbird-menu="true"]')) return;
       setMenuOpenId(null);
     }
-
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setMenuOpenId(null);
     }
 
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
-
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
@@ -68,99 +57,66 @@ export default function LoftBirdsList({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-
     return localBirds
       .filter((b) => {
         if (!q) return true;
-        const ring = b.ring?.toLowerCase() ?? "";
-        const name = b.name?.toLowerCase() ?? "";
-        return ring.includes(q) || name.includes(q);
+        return (b.ring?.toLowerCase() ?? "").includes(q) || (b.name?.toLowerCase() ?? "").includes(q);
       })
       .sort((a, b) => {
         if (sortBy === "ring") return a.ring.localeCompare(b.ring);
-
-        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return bTime - aTime;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
   }, [localBirds, query, sortBy]);
 
-  const reset = () => {
-    setQuery("");
-    setSortBy("newest");
-    setError(null);
-  };
+  const reset = () => { setQuery(""); setSortBy("newest"); setError(null); };
 
   async function moveBird(birdId: string, loftId: string | null) {
     setMenuOpenId(null);
     setError(null);
-
-    // optimistic remove (because this is "birds in THIS loft")
     const original = localBirds.find((b) => b.id === birdId) ?? null;
     setLocalBirds((prev) => prev.filter((b) => b.id !== birdId));
-
     try {
       const res = await fetch("/api/birds/move", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ birdId, loftId }),
       });
-
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || "Failed to move/unassign bird.");
-      }
+      if (!res.ok) throw new Error((await res.text()) || "Failed to move/unassign bird.");
     } catch (e) {
-      // rollback
-      if (original) {
-        setLocalBirds((prev) => [original, ...prev]);
-      }
+      if (original) setLocalBirds((prev) => [original, ...prev]);
       setError(e instanceof Error ? e.message : "Failed to move/unassign bird.");
     }
   }
 
   async function deleteBird(birdId: string) {
     setError(null);
-
-    // optimistic remove
     const original = localBirds.find((b) => b.id === birdId) ?? null;
     setLocalBirds((prev) => prev.filter((b) => b.id !== birdId));
-
     try {
-      const res = await fetch(`/api/birds?id=${encodeURIComponent(birdId)}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || "Failed to delete bird.");
-      }
+      const res = await fetch(`/api/birds?id=${encodeURIComponent(birdId)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.text()) || "Failed to delete bird.");
     } catch (e) {
-      // rollback
-      if (original) {
-        setLocalBirds((prev) => [original, ...prev]);
-      }
+      if (original) setLocalBirds((prev) => [original, ...prev]);
       setError(e instanceof Error ? e.message : "Failed to delete bird.");
     }
   }
 
   return (
-    <section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4 space-y-4">
-      <div className="flex items-start justify-between gap-4">
+    <div>
+      <div className="flex items-center justify-between gap-4 pb-5 border-b border-slate-100 dark:border-slate-800">
         <div>
-          <h2 className="text-sm font-semibold text-slate-100">
-            Birds in this loft
-          </h2>
-          <p className="text-xs text-slate-400">
-            Search by ring/name, click a bird to open its dashboard, or move/unassign it inline.
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+            Birds
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Click a bird to open its dashboard, or move/unassign inline.
           </p>
         </div>
-
         {(query.trim() || sortBy !== "newest" || error) ? (
           <button
             type="button"
             onClick={reset}
-            className="text-xs px-3 py-1 rounded-full border border-slate-700 hover:border-sky-500 hover:text-sky-300 transition"
+            className="text-xs text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition whitespace-nowrap"
           >
             Reset
           </button>
@@ -168,87 +124,63 @@ export default function LoftBirdsList({
       </div>
 
       {error ? (
-        <p className="text-xs text-red-300 border border-red-900/40 bg-red-950/40 rounded-xl px-3 py-2">
+        <p className="mt-4 text-xs text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/40 rounded-xl px-3 py-2">
           {error}
         </p>
       ) : null}
 
-      {/* Controls */}
-      <div className="grid md:grid-cols-6 gap-3">
-        <div className="md:col-span-5">
-          <label className="block text-xs text-slate-400 mb-1">
-            Search (ring or name)
-          </label>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="e.g. GB 23… or Newey"
-            className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
-          />
-        </div>
-
-        <div className="md:col-span-1">
-          <label className="block text-xs text-slate-400 mb-1">Sort</label>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "newest" | "ring")}
-            className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
-          >
-            <option value="newest">Newest</option>
-            <option value="ring">Ring (A→Z)</option>
-          </select>
-        </div>
+      <div className="py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search ring or name…"
+          className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none focus:border-emerald-500 transition"
+        />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as "newest" | "ring")}
+          className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
+        >
+          <option value="newest">Newest first</option>
+          <option value="ring">Ring (A→Z)</option>
+        </select>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-slate-400">
-        <span>
-          Showing{" "}
-          <span className="text-slate-100 font-semibold">{filtered.length}</span>{" "}
-          of{" "}
-          <span className="text-slate-100 font-semibold">{localBirds.length}</span>{" "}
-          birds
-        </span>
-      </div>
+      <p className="text-xs text-slate-400 dark:text-slate-500 py-3 border-b border-slate-100 dark:border-slate-800">
+        {filtered.length} of {localBirds.length} bird{localBirds.length !== 1 ? "s" : ""}
+      </p>
 
-      {/* List */}
       {localBirds.length === 0 ? (
-        <p className="text-xs text-slate-400">No birds assigned yet.</p>
+        <p className="py-8 text-sm text-slate-400 dark:text-slate-500">No birds assigned yet.</p>
       ) : filtered.length === 0 ? (
-        <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
-          <p className="mb-1">No birds match your search.</p>
-          <p className="text-xs text-slate-500">Try clearing the search box.</p>
-        </div>
+        <p className="py-8 text-sm text-slate-400 dark:text-slate-500">No birds match your search.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul>
           {filtered.map((b) => (
-            <li key={b.id}>
-              <div className="flex items-center justify-between gap-3 border border-slate-700 bg-slate-950 rounded-xl px-3 py-2">
+            <li key={b.id} className="group border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <div className="flex items-center gap-3 py-3.5 -mx-1 px-1">
                 <Link
                   href={`/birds/${b.id}`}
-                  className="flex-1 hover:text-sky-300 transition"
+                  className="flex-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 -mx-2 px-2 py-1.5 transition"
                 >
-                  <div className="text-sm text-slate-100">
+                  <span className="text-sm font-medium text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
                     {b.ring}
-                    {b.name ? <span className="text-slate-400"> – {b.name}</span> : null}
-                  </div>
+                    {b.name ? (
+                      <span className="text-slate-400 dark:text-slate-500 font-normal"> – {b.name}</span>
+                    ) : null}
+                  </span>
                 </Link>
 
-                {/* Move / Unassign */}
                 <select
                   defaultValue=""
                   onChange={(e) => {
                     const v = e.target.value;
                     if (!v) return;
-
-                    if (v === "__unassign__") {
-                      void moveBird(b.id, null);
-                    } else if (v !== currentLoftId) {
-                      void moveBird(b.id, v);
-                    }
-
+                    if (v === "__unassign__") void moveBird(b.id, null);
+                    else if (v !== currentLoftId) void moveBird(b.id, v);
                     e.currentTarget.value = "";
                   }}
-                  className="text-xs rounded-xl bg-slate-900 border border-slate-700 px-2 py-2 text-slate-100 outline-none focus:border-sky-500"
+                  className="text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-slate-700 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
                   title="Move bird"
                 >
                   <option value="">Move…</option>
@@ -256,40 +188,33 @@ export default function LoftBirdsList({
                   {loftOptions
                     .filter((l) => l.id !== currentLoftId)
                     .map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name}
-                      </option>
+                      <option key={l.id} value={l.id}>{l.name}</option>
                     ))}
                 </select>
 
-                {/* Secondary actions */}
                 <div className="relative" data-loftbird-menu="true">
                   <button
                     type="button"
                     onClick={() => setMenuOpenId(menuOpenId === b.id ? null : b.id)}
-                    className="px-2 py-1 text-slate-400 hover:text-slate-100"
+                    className="w-7 h-7 flex items-center justify-center rounded-md text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                     aria-label="More actions"
                   >
                     ⋯
                   </button>
 
                   {menuOpenId === b.id && (
-                    <div className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-slate-700 bg-slate-950 shadow">
+                    <div className="absolute right-0 top-9 z-20 w-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg shadow-black/10 dark:shadow-slate-950/50 py-1">
                       <Link
                         href={`/birds/${b.id}/edit`}
-                        className="block px-3 py-2 text-sm hover:bg-slate-900"
+                        className="block px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                         onClick={() => setMenuOpenId(null)}
                       >
                         Edit
                       </Link>
-
                       <button
                         type="button"
-                        onClick={() => {
-                          setMenuOpenId(null);
-                          setDeleteId(b.id);
-                        }}
-                        className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-950/40"
+                        onClick={() => { setMenuOpenId(null); setDeleteId(b.id); }}
+                        className="block w-full text-left px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
                       >
                         Delete
                       </button>
@@ -308,12 +233,8 @@ export default function LoftBirdsList({
         message="This action cannot be undone."
         confirmLabel="Delete bird"
         onCancel={() => setDeleteId(null)}
-        onConfirm={() => {
-          if (!deleteId) return;
-          void deleteBird(deleteId);
-          setDeleteId(null);
-        }}
+        onConfirm={() => { if (!deleteId) return; void deleteBird(deleteId); setDeleteId(null); }}
       />
-    </section>
+    </div>
   );
 }

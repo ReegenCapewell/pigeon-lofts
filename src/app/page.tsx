@@ -16,11 +16,12 @@ export default async function HomePage() {
   const user = await prisma.user.findUnique({
     where: { email: session.user.email.toLowerCase() },
     include: {
-      lofts: { orderBy: { createdAt: "desc" }, take: 5 },
+      lofts: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, take: 5 },
       birds: {
+        where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
         take: 5,
-        include: { loft: true },
+        include: { loft: { select: { id: true, name: true, deletedAt: true } } },
       },
     },
   });
@@ -29,164 +30,146 @@ export default async function HomePage() {
   const birdCount = user?.birds.length ?? 0;
 
   return (
-    <main className="space-y-6">
-{/* Header */}
-<section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-  <div>
-    <h1 className="text-2xl md:text-3xl font-semibold text-slate-50 mb-1">
-      Dashboard
-    </h1>
-    <p className="text-sm text-slate-300">
-      Quick overview of your lofts and birds.
-    </p>
-  </div>
+    <main>
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-8 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+            Overview
+          </p>
+          <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">
+            Dashboard
+          </h1>
+        </div>
+        <div className="flex gap-2">
+          <Link
+            href="/lofts"
+            className="text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-500 transition"
+          >
+            Lofts
+          </Link>
+          <Link
+            href="/birds"
+            className="text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-500 transition"
+          >
+            Birds
+          </Link>
+        </div>
+      </div>
 
-  {/* Quick navigation */}
-  <div className="flex gap-3 text-sm">
-    <Link
-      href="/lofts"
-      className="px-4 py-2 rounded-full border border-slate-600 text-slate-100 hover:border-sky-500 hover:text-sky-300 transition"
-    >
-      View lofts →
-    </Link>
-    <Link
-      href="/birds"
-      className="px-4 py-2 rounded-full border border-slate-600 text-slate-100 hover:border-sky-500 hover:text-sky-300 transition"
-    >
-      View birds →
-    </Link>
-  </div>
-</section>
+      {/* Stats row */}
+      <div className="py-8 flex gap-12 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">{loftCount}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 uppercase tracking-wide">Lofts</p>
+        </div>
+        <div>
+          <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">{birdCount}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 uppercase tracking-wide">Birds</p>
+        </div>
+        <div className="opacity-40">
+          <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">—</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 uppercase tracking-wide">Races</p>
+        </div>
+      </div>
 
-{/* Stats */}
-<section className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
-  <h2 className="text-sm font-semibold text-slate-100 mb-3">Totals</h2>
-
-  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-    <div className="bg-slate-950 border border-slate-700 rounded-xl p-3">
-      <p className="text-xs text-slate-400">Lofts</p>
-      <p className="text-2xl font-semibold text-slate-50">
-        {loftCount}
-      </p>
-    </div>
-
-    <div className="bg-slate-950 border border-slate-700 rounded-xl p-3">
-      <p className="text-xs text-slate-400">Birds</p>
-      <p className="text-2xl font-semibold text-slate-50">
-        {birdCount}
-      </p>
-    </div>
-
-    {/* Future-proof slots */}
-    <div className="bg-slate-950 border border-slate-700 rounded-xl p-3 opacity-60">
-      <p className="text-xs text-slate-400">Needs attention</p>
-      <p className="text-2xl font-semibold text-slate-50">—</p>
-    </div>
-
-    <div className="bg-slate-950 border border-slate-700 rounded-xl p-3 opacity-60">
-      <p className="text-xs text-slate-400">Races logged</p>
-      <p className="text-2xl font-semibold text-slate-50">—</p>
-    </div>
-  </div>
-
-  <p className="text-[11px] text-slate-500 mt-3">
-    Totals update automatically as you add birds and assign them to lofts.
-  </p>
-</section>
-
-      {/* Recent */}
-      <section className="grid md:grid-cols-2 gap-4">
+      {/* Recent sections */}
+      <div className="grid md:grid-cols-2 gap-0 md:gap-12 mt-0">
         {/* Recent lofts */}
-        <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-slate-100">Recent lofts</h2>
-            <Link href="/lofts" className="text-xs text-sky-400 hover:text-sky-300">
+        <section className="py-8 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800 md:pr-12">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
+              Recent lofts
+            </h2>
+            <Link
+              href="/lofts"
+              className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition"
+            >
               See all
             </Link>
           </div>
 
           {user?.lofts?.length ? (
-            <ul className="space-y-2">
+            <ul>
               {user.lofts.map((loft) => (
-                <li key={loft.id}>
+                <li key={loft.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
                   <Link
                     href={`/lofts/${loft.id}`}
-                    className="block border border-slate-800 bg-slate-950 rounded-xl px-3 py-2 hover:border-sky-500 hover:text-sky-300 transition"
+                    className="group flex items-center justify-between py-3 -mx-2 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 transition"
                   >
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-100">{loft.name}</span>
-                      <span className="text-[10px] text-slate-500">
-                        {new Date(loft.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Open loft dashboard →
-                    </p>
+                    <span className="text-sm text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition font-medium">
+                      {loft.name}
+                    </span>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                      {new Date(loft.createdAt).toLocaleDateString()}
+                    </span>
                   </Link>
                 </li>
               ))}
             </ul>
           ) : (
-            <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
-              <p className="mb-2">No lofts yet.</p>
-              <Link
-                href="/lofts"
-                className="text-sky-400 hover:text-sky-300 underline"
-              >
-                Create your first loft
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              No lofts yet.{" "}
+              <Link href="/lofts" className="text-emerald-600 dark:text-emerald-400 hover:underline">
+                Create one
               </Link>
-            </div>
+            </p>
           )}
-        </div>
+        </section>
 
         {/* Recent birds */}
-        <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-slate-100">Recent birds</h2>
-            <Link href="/birds" className="text-xs text-sky-400 hover:text-sky-300">
+        <section className="py-8 md:pl-12">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
+              Recent birds
+            </h2>
+            <Link
+              href="/birds"
+              className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition"
+            >
               See all
             </Link>
           </div>
 
           {user?.birds?.length ? (
-            <ul className="space-y-2">
-              {user.birds.map((bird) => (
-                <li key={bird.id}>
-                  <Link
-                    href={`/birds/${bird.id}`}
-                    className="block border border-slate-800 bg-slate-950 rounded-xl px-3 py-2 hover:border-sky-500 hover:text-sky-300 transition"
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-100">
-                        {bird.ring}
-                        {bird.name ? (
-                          <span className="text-slate-400"> – {bird.name}</span>
-                        ) : null}
-                      </span>
-                      <span className="text-[10px] text-slate-500">
+            <ul>
+              {user.birds.map((bird) => {
+                const loftValid = bird.loft && bird.loft.deletedAt === null;
+                return (
+                  <li key={bird.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                    <Link
+                      href={`/birds/${bird.id}`}
+                      className="group flex items-center justify-between py-3 -mx-2 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 transition"
+                    >
+                      <div>
+                        <span className="text-sm text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition font-medium">
+                          {bird.ring}
+                          {bird.name ? (
+                            <span className="font-normal text-slate-400 dark:text-slate-500"> – {bird.name}</span>
+                          ) : null}
+                        </span>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                          {loftValid ? bird.loft!.name : "Unassigned"}
+                        </p>
+                      </div>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500">
                         {new Date(bird.createdAt).toLocaleDateString()}
                       </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      {bird.loft ? `Loft: ${bird.loft.name}` : "Unassigned"} • Open bird profile →
-                    </p>
-                  </Link>
-                </li>
-              ))}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
-            <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 text-sm text-slate-300">
-              <p className="mb-2">No birds yet.</p>
-              <Link
-                href="/birds"
-                className="text-sky-400 hover:text-sky-300 underline"
-              >
-                Add your first bird
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              No birds yet.{" "}
+              <Link href="/birds" className="text-emerald-600 dark:text-emerald-400 hover:underline">
+                Add one
               </Link>
-            </div>
+            </p>
           )}
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
   );
 }
