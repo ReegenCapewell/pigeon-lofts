@@ -37,13 +37,27 @@ export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return new NextResponse("Unauthorized", { status: 401 });
 
-  const { ring, name, loftId } = (await req.json()) as {
+  const { ring, name, loftId, dateOfBirth } = (await req.json()) as {
     ring?: string;
     name?: string;
     loftId?: string | null;
+    dateOfBirth?: string;
   };
 
   if (!ring) return new NextResponse("Missing ring", { status: 400 });
+
+  if (!dateOfBirth) return new NextResponse("Date of birth is required", { status: 400 });
+
+  // Parse dd/mm/yyyy
+  const dobMatch = dateOfBirth.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!dobMatch) {
+    return new NextResponse("Date of birth must be in dd/mm/yyyy format", { status: 400 });
+  }
+  const [, dd, mm, yyyy] = dobMatch;
+  const parsedDob = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  if (isNaN(parsedDob.getTime()) || parsedDob > new Date()) {
+    return new NextResponse("Invalid date of birth", { status: 400 });
+  }
 
   const normalisedRing = normaliseRing(ring);
 
@@ -68,6 +82,7 @@ export async function POST(req: Request) {
       data: {
         ring: normalisedRing,
         name: name?.trim() ? name.trim() : null,
+        dateOfBirth: parsedDob,
         ownerId: user.id,
         loftId: connectLoftId,
       },

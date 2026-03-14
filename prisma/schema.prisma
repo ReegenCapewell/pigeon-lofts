@@ -37,15 +37,16 @@ model Loft {
 }
 
 model Bird {
-  id        String   @id @default(cuid())
-  ring      String   @unique
-  name      String?
-  loftId    String?
-  loft      Loft?    @relation(fields: [loftId], references: [id])
-  ownerId   String
-  owner     User    @relation(fields: [ownerId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
+  id          String    @id @default(cuid())
+  ring        String    @unique
+  name        String?
+  dateOfBirth DateTime?
+  loftId      String?
+  loft        Loft?     @relation(fields: [loftId], references: [id])
+  ownerId     String
+  owner       User      @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 }
 

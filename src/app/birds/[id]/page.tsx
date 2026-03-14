@@ -52,6 +52,24 @@ export default async function BirdDashboardPage({
   // ✅ If loft is deleted (or missing), treat as unassigned in UI
   const loftIsValid = !!bird.loft && bird.loft.deletedAt === null;
 
+  // Calculate age in whole years from dateOfBirth
+  let ageYears: number | null = null;
+  let dobDisplay: string | null = null;
+  if (bird.dateOfBirth) {
+    const today = new Date();
+    const dob = new Date(bird.dateOfBirth);
+    let age = today.getFullYear() - dob.getFullYear();
+    const hasHadBirthdayThisYear =
+      today.getMonth() > dob.getMonth() ||
+      (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+    if (!hasHadBirthdayThisYear) age -= 1;
+    ageYears = age;
+    const dd = String(dob.getDate()).padStart(2, "0");
+    const mm = String(dob.getMonth() + 1).padStart(2, "0");
+    const yyyy = dob.getFullYear();
+    dobDisplay = `${dd}/${mm}/${yyyy}`;
+  }
+
   return (
     <main className="space-y-6">
       <div className="space-y-2">
@@ -108,7 +126,7 @@ export default async function BirdDashboardPage({
         </div>
       </div>
 
-      <section className="grid md:grid-cols-3 gap-4">
+      <section className="grid md:grid-cols-4 gap-4">
         <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
           <p className="text-xs text-slate-400">Ring number</p>
           <p className="text-lg font-semibold text-slate-50">{bird.ring}</p>
@@ -133,6 +151,20 @@ export default async function BirdDashboardPage({
             </Link>
           ) : (
             <p className="text-lg font-semibold text-slate-50">Unassigned</p>
+          )}
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4">
+          <p className="text-xs text-slate-400">Age</p>
+          {ageYears !== null ? (
+            <>
+              <p className="text-lg font-semibold text-slate-50">
+                {ageYears} {ageYears === 1 ? "year" : "years"} old
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">{dobDisplay}</p>
+            </>
+          ) : (
+            <p className="text-lg font-semibold text-slate-50">—</p>
           )}
         </div>
       </section>

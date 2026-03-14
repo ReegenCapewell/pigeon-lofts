@@ -29,6 +29,7 @@ export default function BirdsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [newRing, setNewRing] = useState("");
   const [newName, setNewName] = useState("");
+  const [newDob, setNewDob] = useState("");
   const [newLoftId, setNewLoftId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,10 +191,21 @@ async function assignBirdToLoft(birdId: string, loftId: string) {
 
     const ring = newRing.trim();
     const name = newName.trim();
+    const dob = newDob.trim();
     const loftId = newLoftId === "none" ? null : newLoftId;
 
     if (!ring) {
       setError("Please enter a ring number.");
+      return;
+    }
+
+    if (!dob) {
+      setError("Please enter a date of birth.");
+      return;
+    }
+
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
+      setError("Date of birth must be in dd/mm/yyyy format.");
       return;
     }
 
@@ -202,7 +214,7 @@ async function assignBirdToLoft(birdId: string, loftId: string) {
       const res = await fetch("/api/birds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ring, name: name || null, loftId }),
+        body: JSON.stringify({ ring, name: name || null, loftId, dateOfBirth: dob }),
       });
 
 if (!res.ok) {
@@ -226,6 +238,7 @@ if (!res.ok) {
       setShowAdd(false);
       setNewRing("");
       setNewName("");
+      setNewDob("");
       setNewLoftId("none");
       await load();
     } catch (err) {
@@ -254,6 +267,7 @@ if (!res.ok) {
               setError(null);
               setNewRing("");
               setNewName("");
+              setNewDob("");
               setNewLoftId("none");
               setShowAdd(true);
             }}
@@ -526,6 +540,19 @@ if (!res.ok) {
                   className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
                   placeholder="e.g. Newey"
                   maxLength={60}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">
+                  Date of birth
+                </label>
+                <input
+                  value={newDob}
+                  onChange={(e) => setNewDob(e.target.value)}
+                  className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+                  placeholder="dd/mm/yyyy"
+                  maxLength={10}
                 />
               </div>
 
