@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/auth";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import { isValidRing, normaliseRing } from "@/lib/validation";
 import { Prisma } from "@prisma/client";
 import { NextRequest } from "next/server";

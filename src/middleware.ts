@@ -3,8 +3,7 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 export async function middleware(req: NextRequest) {
-    console.log("MIDDLEWARE HIT:", req.nextUrl.pathname);
-    const { pathname } = req.nextUrl;
+  const { pathname } = req.nextUrl;
 
   // Public routes
   const isPublic =
