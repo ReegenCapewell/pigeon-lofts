@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/auth";
 import { ensureBirdNode, loadTree } from "@/lib/pedigree";
+import { formatDob } from "@/lib/dateOfBirth";
 import PedigreeView from "@/components/pedigree/PedigreeView";
 import type { LoftBirdOption } from "@/lib/pedigreeShared";
 
@@ -33,7 +34,14 @@ export default async function BirdPedigreePage({ params }: { params: Promise<{ i
   const birds = await prisma.bird.findMany({
     where: { ownerId: user.id, deletedAt: null, NOT: { id: bird.id } },
     orderBy: { ring: "asc" },
-    select: { id: true, ring: true, name: true, sex: true, loft: { select: { name: true, deletedAt: true } } },
+    select: {
+      id: true,
+      ring: true,
+      name: true,
+      sex: true,
+      dateOfBirth: true,
+      loft: { select: { name: true, deletedAt: true } },
+    },
   });
   const loftBirds: LoftBirdOption[] = birds.map((b) => ({
     id: b.id,
@@ -41,6 +49,7 @@ export default async function BirdPedigreePage({ params }: { params: Promise<{ i
     name: b.name,
     sex: b.sex,
     loftName: b.loft && !b.loft.deletedAt ? b.loft.name : null,
+    dateOfBirth: b.dateOfBirth ? formatDob(b.dateOfBirth) : null,
   }));
 
   return (

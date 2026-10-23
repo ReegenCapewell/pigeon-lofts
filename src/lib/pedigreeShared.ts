@@ -33,7 +33,14 @@ export type LoftBirdOption = {
   name: string | null;
   sex: BirdSex | null;
   loftName: string | null;
+  dateOfBirth: string | null; // dd/mm/yyyy
 };
+
+// dd/mm/yyyy -> sortable number (yyyymmdd), or null if missing/invalid
+export function dobValue(dob: string | null | undefined): number | null {
+  const m = dob?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? Number(m[3] + m[2] + m[1]) : null;
+}
 
 // Common racing pigeon colours, offered as suggestions (free text is allowed).
 export const PIGEON_COLOURS = [
@@ -60,4 +67,34 @@ export const PIGEON_COLOURS = [
 export function birdLabel(n: { ring: string | null; name: string | null }): string {
   const ring = n.ring || "Unknown ring";
   return n.name ? `${ring} – ${n.name}` : ring;
+}
+
+// Entries that can't be right biologically: a hen as a sire (or cock as a
+// dam), one bird as both a sire and a dam, or a parent born on or after its
+// offspring. New links are blocked by the server; this catches anything
+// entered before those checks existed.
+export function findProblems(tree: PedTree): string[] {
+  const problems = new Set<string>();
+  const roles = new Map<string, Set<ParentRole>>();
+  for (const child of Object.values(tree.nodes)) {
+    for (const role of ["sire", "dam"] as const) {
+      const parentId = role === "sire" ? child.sireId : child.damId;
+      const parent = parentId ? tree.nodes[parentId] : null;
+      if (!parent) continue;
+      const p = birdLabel(parent);
+      const c = birdLabel(child);
+      roles.set(parent.id, (roles.get(parent.id) ?? new Set<ParentRole>()).add(role));
+      if (role === "sire" && parent.sex === "FEMALE") problems.add(`${p} is a hen but is listed as the sire of ${c}.`);
+      if (role === "dam" && parent.sex === "MALE") problems.add(`${p} is a cock but is listed as the dam of ${c}.`);
+      const pd = dobValue(parent.dateOfBirth);
+      const cd = dobValue(child.dateOfBirth);
+      if (pd !== null && cd !== null && pd >= cd) {
+        problems.add(`${p} (born ${parent.dateOfBirth}) is listed as a parent of ${c} (born ${child.dateOfBirth}), but a parent must be older.`);
+      }
+    }
+  }
+  for (const [id, r] of roles) {
+    if (r.size > 1) problems.add(`${birdLabel(tree.nodes[id])} is listed as both a sire and a dam.`);
+  }
+  return [...problems];
 }

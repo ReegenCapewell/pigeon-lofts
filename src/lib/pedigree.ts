@@ -126,6 +126,79 @@ export async function deleteOrphanedManualNode(nodeId: string | null): Promise<v
   await deleteOrphanedManualNode(node.damId);
 }
 
+type BirdFacts = { ring: string; sex: "MALE" | "FEMALE" | null; dateOfBirth: Date | null };
+
+// Checks that `parent` (one of the owner's birds) can be the `role` of the
+// child node, beyond the loop check: a parent must be born before its
+// offspring, and an unsexed bird can't be a sire in one place and a dam in
+// another. Returns an error message, or null if the link is fine.
+export async function checkParentLink(
+  childId: string,
+  parentNodeId: string,
+  parent: BirdFacts,
+  role: "sire" | "dam"
+): Promise<string | null> {
+  const child = await prisma.pedigreeNode.findUnique({
+    where: { id: childId },
+    select: { bird: { select: { ring: true, dateOfBirth: true } } },
+  });
+  const childBird = child?.bird;
+  if (childBird?.dateOfBirth && parent.dateOfBirth && parent.dateOfBirth >= childBird.dateOfBirth) {
+    return `${parent.ring} (born ${formatDob(parent.dateOfBirth)}) can't be a parent of ${childBird.ring} (born ${formatDob(childBird.dateOfBirth)}): a parent must be older than its offspring.`;
+  }
+
+  if (!parent.sex) {
+    const oppositeUses = await prisma.pedigreeNode.count({
+      where: role === "sire" ? { damId: parentNodeId } : { sireId: parentNodeId },
+    });
+    if (oppositeUses > 0) {
+      return `${parent.ring} is already a ${role === "sire" ? "dam" : "sire"} in a pedigree, so it can't also be a ${role}.`;
+    }
+  }
+  return null;
+}
+
+// Checks a change to a bird's sex or date of birth against the pedigrees it
+// appears in. Returns an error message, or null if the change is fine.
+export async function checkBirdChange(
+  birdId: string,
+  next: { sex: "MALE" | "FEMALE" | null; dateOfBirth: Date | null }
+): Promise<string | null> {
+  const birdSel = { select: { ring: true, dateOfBirth: true } } as const;
+  const node = await prisma.pedigreeNode.findUnique({
+    where: { birdId },
+    select: {
+      sire: { select: { bird: birdSel } },
+      dam: { select: { bird: birdSel } },
+      sireOf: { select: { bird: birdSel } },
+      damOf: { select: { bird: birdSel } },
+    },
+  });
+  if (!node) return null;
+
+  if (node.sireOf.length && next.sex !== "MALE") {
+    return "This bird is a sire in a pedigree, so its sex must be Male. Change the pedigree first if this is wrong.";
+  }
+  if (node.damOf.length && next.sex !== "FEMALE") {
+    return "This bird is a dam in a pedigree, so its sex must be Female. Change the pedigree first if this is wrong.";
+  }
+
+  const dob = next.dateOfBirth;
+  if (dob) {
+    for (const p of [node.sire?.bird, node.dam?.bird]) {
+      if (p?.dateOfBirth && p.dateOfBirth >= dob) {
+        return `Its parent ${p.ring} was born ${formatDob(p.dateOfBirth)}, so this bird must be born after that.`;
+      }
+    }
+    for (const c of [...node.sireOf, ...node.damOf]) {
+      if (c.bird?.dateOfBirth && c.bird.dateOfBirth <= dob) {
+        return `It's a parent of ${c.bird.ring} (born ${formatDob(c.bird.dateOfBirth)}), so it must be born before that.`;
+      }
+    }
+  }
+  return null;
+}
+
 // Trims and caps free-text pedigree fields; empty strings become null.
 export function cleanText(value: unknown, max = 120): string | null {
   if (typeof value !== "string") return null;

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/auth";
 import { requireUser } from "@/lib/apiAuth";
-import { cleanText, deleteOrphanedManualNode, ensureBirdNode, wouldCreateCycle } from "@/lib/pedigree";
+import { checkParentLink, cleanText, deleteOrphanedManualNode, ensureBirdNode, wouldCreateCycle } from "@/lib/pedigree";
 import { normaliseRing } from "@/lib/validation";
 import type { ParentRole } from "@/lib/pedigreeShared";
 
@@ -53,7 +53,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (body.birdId) {
     const bird = await prisma.bird.findFirst({
       where: { id: body.birdId, ownerId: user.id, deletedAt: null },
-      select: { id: true, sex: true },
+      select: { id: true, ring: true, sex: true, dateOfBirth: true },
     });
     if (!bird) return NextResponse.json({ error: "Bird not found." }, { status: 404 });
     if (bird.sex && bird.sex !== expectedSex) {
@@ -69,6 +69,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         { error: "That bird can't be added here: it would become its own ancestor." },
         { status: 400 }
       );
+    }
+    const problem = await checkParentLink(child.id, parent.id, bird, role);
+    if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+
+    // An unsexed bird chosen as a sire is male (and a dam female): record it so
+    // it can't later be picked for the opposite role.
+    if (!bird.sex) {
+      await prisma.bird.update({ where: { id: bird.id }, data: { sex: expectedSex } });
     }
     parentId = parent.id;
   } else if (body.manual) {

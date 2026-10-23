@@ -28,6 +28,16 @@ export function buildSlots(tree: PedTree, rootId: string, generations = PEDIGREE
   return slots.filter(Boolean);
 }
 
+// How many times each bird appears on the full sheet from `rootId`. A bird
+// appearing more than once usually means line breeding (related parents).
+export function repeatCounts(tree: PedTree, rootId: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const s of buildSlots(tree, rootId, PEDIGREE_GENERATIONS)) {
+    if (s.node) counts.set(s.node.id, (counts.get(s.node.id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 // Node ids walked from the root down to the slot at `pos` (excluding the root).
 export function pathToPos(tree: PedTree, rootId: string, pos: number): string[] {
   const bits = pos.toString(2).slice(1); // after the leading 1: 0 = sire, 1 = dam
@@ -51,6 +61,8 @@ export default function PedigreeGrid({
   generations = PEDIGREE_GENERATIONS,
   editable = false,
   selectedPos,
+  highlightId = null,
+  onHover,
   onSelect,
   onAdd,
   onExplore,
@@ -61,11 +73,14 @@ export default function PedigreeGrid({
   generations?: number;
   editable?: boolean;
   selectedPos?: number | null;
+  highlightId?: string | null; // a repeated bird whose copies should all be highlighted
+  onHover?: (nodeId: string | null) => void;
   onSelect?: (slot: Slot) => void;
   onAdd?: (slot: Slot) => void;
   onExplore?: (slot: Slot) => void;
 }) {
   const slots = buildSlots(tree, rootId, generations);
+  const counts = repeatCounts(tree, rootId);
   const print = mode === "print";
   // Narrow (phone) view: fewer columns, so keep boxes minimal.
   const compact = !print && generations < PEDIGREE_GENERATIONS;
@@ -120,6 +135,9 @@ export default function PedigreeGrid({
                   node={slot.node}
                   print={print}
                   compact={compact}
+                  repeats={counts.get(slot.node.id) ?? 1}
+                  highlighted={highlightId === slot.node.id && (counts.get(slot.node.id) ?? 1) > 1}
+                  onHover={onHover}
                   selected={selectedPos === slot.pos}
                   onSelect={onSelect}
                   onExplore={onExplore}
@@ -157,6 +175,9 @@ function BirdBox({
   node,
   print,
   compact,
+  repeats,
+  highlighted,
+  onHover,
   selected,
   onSelect,
   onExplore,
@@ -166,6 +187,9 @@ function BirdBox({
   node: PedNode;
   print: boolean;
   compact: boolean;
+  repeats: number;
+  highlighted: boolean;
+  onHover?: (nodeId: string | null) => void;
   selected: boolean;
   onSelect?: (slot: Slot) => void;
   onExplore?: (slot: Slot) => void;
@@ -192,6 +216,7 @@ function BirdBox({
       <div className={`border border-slate-400 border-l-[3px] ${accent} px-[2mm] py-[1mm] leading-tight ${size} text-black bg-white`}>
         <p className="font-bold">
           {node.ring || "—"}
+          {repeats > 1 ? <span> (×{repeats})</span> : null}
           {node.colour ? <span className="font-normal"> · {node.colour}</span> : null}
         </p>
         {node.name ? <p className="italic">{node.name}</p> : null}
@@ -205,10 +230,14 @@ function BirdBox({
 
   return (
     <div
+      onMouseEnter={repeats > 1 ? () => onHover?.(node.id) : undefined}
+      onMouseLeave={repeats > 1 ? () => onHover?.(null) : undefined}
       className={`group relative w-full rounded-xl border border-l-4 ${accent} transition ${
         selected
           ? "border-emerald-500 dark:border-emerald-400 ring-2 ring-emerald-500/30 bg-emerald-50/60 dark:bg-emerald-950/30"
-          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-emerald-400 dark:hover:border-emerald-500"
+          : highlighted
+            ? "border-violet-400 dark:border-violet-400 ring-2 ring-violet-400/40 bg-violet-50 dark:bg-violet-950/40"
+            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-emerald-400 dark:hover:border-emerald-500"
       }`}
     >
       <button
@@ -219,6 +248,14 @@ function BirdBox({
         <span className={`flex items-center gap-1 font-semibold text-slate-900 dark:text-slate-50 ${compact ? "text-[11px]" : "text-xs"}`}>
           {compact ? null : <SexIcon sex={node.sex} />}
           <span className="break-all">{node.ring || "Unknown ring"}</span>
+          {repeats > 1 ? (
+            <span
+              title={`Appears ${repeats} times in this pedigree`}
+              className="shrink-0 rounded-full bg-violet-100 dark:bg-violet-900/50 px-1.5 py-px text-[10px] font-semibold text-violet-800 dark:text-violet-200"
+            >
+              ×{repeats}
+            </span>
+          ) : null}
         </span>
         {node.name || node.birdId ? (
           <span className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">

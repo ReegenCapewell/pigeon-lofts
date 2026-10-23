@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PIGEON_COLOURS, birdLabel, type LoftBirdOption, type ParentRole, type PedNode } from "@/lib/pedigreeShared";
+import { PIGEON_COLOURS, birdLabel, dobValue, type LoftBirdOption, type ParentRole, type PedNode } from "@/lib/pedigreeShared";
 
 const inputClass =
   "w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm";
@@ -178,6 +178,7 @@ export function ParentForm({
   const [error, setError] = useState<string | null>(null);
 
   const wanted = role === "sire" ? "MALE" : "FEMALE";
+  const childDob = dobValue(childNode.dateOfBirth);
   const roleLabel = role === "sire" ? "sire (father)" : "dam (mother)";
 
   // Only birds of the right sex (or not yet sexed), excluding the child itself.
@@ -282,16 +283,22 @@ export function ParentForm({
                 <option value="">Choose a bird…</option>
                 {groups.map(([loft, birds]) => (
                   <optgroup key={loft} label={loft}>
-                    {birds.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {birdLabel(b)}
-                      </option>
-                    ))}
+                    {birds.map((b) => {
+                      // A parent must be born before the bird it's being added to.
+                      const tooYoung = childDob !== null && dobValue(b.dateOfBirth) !== null && dobValue(b.dateOfBirth)! >= childDob;
+                      return (
+                        <option key={b.id} value={b.id} disabled={tooYoung}>
+                          {birdLabel(b)}
+                          {tooYoung ? ` (too young, born ${b.dateOfBirth})` : ""}
+                        </option>
+                      );
+                    })}
                   </optgroup>
                 ))}
               </select>
               <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
-                Showing {role === "sire" ? "males" : "females"} and birds with no sex set.
+                Showing {role === "sire" ? "males" : "females"} and birds with no sex set. Choosing a bird with no sex
+                set records it as {role === "sire" ? "male" : "female"}.
               </p>
             </div>
           )

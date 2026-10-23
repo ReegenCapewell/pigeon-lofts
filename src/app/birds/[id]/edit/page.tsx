@@ -6,6 +6,7 @@ import { prisma } from "@/lib/auth";
 import { isValidRing, normaliseRing } from "@/lib/validation";
 import { formatDob, parseDob } from "@/lib/dateOfBirth";
 import { parseSex } from "@/lib/sex";
+import { checkBirdChange } from "@/lib/pedigree";
 import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +87,9 @@ export default async function EditBirdPage({
     const dob = parseDob(dobRaw);
     if (dob.error !== null) fail(dob.error);
     const dateOfBirth = dob.date;
+
+    const pedigreeProblem = await checkBirdChange(id, { sex, dateOfBirth });
+    if (pedigreeProblem) fail(pedigreeProblem);
 
     let loftId: string | null = null;
     if (loftIdRaw && loftIdRaw !== "none") {

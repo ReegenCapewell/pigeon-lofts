@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ConfirmModal from "@/components/ConfirmModal";
 import SexIcon from "@/components/SexIcon";
-import PedigreeGrid, { buildSlots, pathToPos, type Slot } from "./PedigreeGrid";
+import PedigreeGrid, { buildSlots, pathToPos, repeatCounts, type Slot } from "./PedigreeGrid";
 import { DetailsForm, Modal, ParentForm, sendJson } from "./PedigreeForms";
 import { SEX_LABELS } from "@/lib/sex";
-import { PEDIGREE_GENERATIONS, birdLabel, type LoftBirdOption, type ParentRole, type PedNode, type PedTree } from "@/lib/pedigreeShared";
+import { PEDIGREE_GENERATIONS, birdLabel, findProblems, type LoftBirdOption, type ParentRole, type PedNode, type PedTree } from "@/lib/pedigreeShared";
 
 type AddTarget = { childNode: PedNode; role: ParentRole; replacing: boolean };
 
@@ -74,6 +74,10 @@ export default function PedigreeView({
   const generations = isPhone ? 2 : PEDIGREE_GENERATIONS;
   const slots = useMemo(() => buildSlots(tree, rootId, generations), [tree, rootId, generations]);
   const selected = selectedPos ? slots.find((s) => s.pos === selectedPos && s.node) ?? null : null;
+  const counts = useMemo(() => repeatCounts(tree, rootId), [tree, rootId]);
+  const problems = useMemo(() => (editable ? findProblems(tree) : []), [tree, editable]);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const hasRepeats = [...counts.values()].some((n) => n > 1);
 
   const subjectHasPedigree = !!(subject?.sireId || subject?.damId);
 
@@ -162,6 +166,17 @@ export default function PedigreeView({
           </div>
         ) : null}
 
+        {problems.length ? (
+          <div className="mb-5 rounded-xl border border-red-300 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+            <p className="font-medium mb-1">Some entries in this pedigree look wrong. Please check them:</p>
+            <ul className="list-disc pl-5 space-y-0.5">
+              {problems.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {actionError ? (
           <p className="mb-4 text-xs text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/40 rounded-xl px-3 py-2">
             {actionError}
@@ -175,6 +190,8 @@ export default function PedigreeView({
             generations={generations}
             editable={editable}
             selectedPos={selectedPos}
+            highlightId={hoverId ?? selected?.node?.id ?? null}
+            onHover={setHoverId}
             onSelect={(s) => setSelectedPos(s.pos)}
             onAdd={(s) => openAdd(s, false)}
             onExplore={explore}
@@ -188,6 +205,12 @@ export default function PedigreeView({
             <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-px text-[9px] font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Loft</span>
             In your lofts
           </span>
+          {hasRepeats ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="rounded-full bg-violet-100 dark:bg-violet-900/50 px-1.5 py-px text-[10px] font-semibold text-violet-800 dark:text-violet-200">×2</span>
+              Appears more than once (line breeding){isPhone ? "" : ": hover to highlight"}
+            </span>
+          ) : null}
           {isPhone ? (
             <span>Tap a bird for details{editable ? ", editing" : ""} and its own pedigree</span>
           ) : (
@@ -207,6 +230,7 @@ export default function PedigreeView({
           slot={selected}
           editable={editable}
           isRoot={selected.pos === 1}
+          repeats={counts.get(selected.node.id) ?? 1}
           onClose={() => setSelectedPos(null)}
           onEdit={() => { setEditNode(selected.node); setSelectedPos(null); }}
           onReplace={() => openAdd(selected, true)}
@@ -262,6 +286,7 @@ function NodeDetails({
   slot,
   editable,
   isRoot,
+  repeats,
   onClose,
   onEdit,
   onReplace,
@@ -271,6 +296,7 @@ function NodeDetails({
   slot: Slot;
   editable: boolean;
   isRoot: boolean;
+  repeats: number;
   onClose: () => void;
   onEdit: () => void;
   onReplace: () => void;
@@ -283,6 +309,11 @@ function NodeDetails({
 
   return (
     <Modal title={birdLabel(n)} subtitle={relation ? `${relation}${n.birdId ? " · in your lofts" : ""}` : n.birdId ? "In your lofts" : undefined} onClose={onClose}>
+      {repeats > 1 ? (
+        <p className="mb-4 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-900/60 px-3 py-2 text-xs text-violet-800 dark:text-violet-200">
+          This bird appears {repeats} times in this pedigree. That&apos;s normal with line breeding; if it&apos;s a mistake, use &ldquo;Change&rdquo; on the wrong copy.
+        </p>
+      ) : null}
       <dl className="grid grid-cols-2 gap-4 mb-5">
         <Detail label="Ring" value={n.ring} />
         <Detail label="Name" value={n.name} />
