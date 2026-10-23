@@ -24,7 +24,7 @@ Env vars: `DATABASE_URL` (in `.env`, read by Prisma CLI) and `NEXTAUTH_URL`, `NE
 
 ## Architecture
 
-**Data model** (`prisma/schema.prisma`): `User` → many `Loft`, `User` → many `Bird`; `Bird.loftId` is optional (a bird can be unassigned). `Bird.ring` is globally unique.
+**Data model** (`prisma/schema.prisma`): `User` → many `Loft`, `User` → many `Bird`; `Bird.loftId` is optional (a bird can be unassigned). `Bird.ring` is unique among non-deleted birds only, enforced by a partial unique index (`Bird_ring_active_unique`) created in raw SQL in migration `20260314000001_ring_partial_unique`. Prisma's schema can't express this index, so check any `prisma migrate dev` output and don't let it generate a migration that drops the index. `Bird.dateOfBirth` is required when creating a bird via `POST /api/birds` (sent as `dd/mm/yyyy`, must not be in the future) but nullable in the DB.
 
 **Soft deletes**: `Loft` and `Bird` have `deletedAt`. Every query must filter `deletedAt: null`, including nested includes (e.g. `birds: { where: { deletedAt: null } }`). Deleting a loft unassigns its birds (`loftId: null`) rather than deleting them; deleting a bird also clears its `loftId`.
 
@@ -44,4 +44,4 @@ Env vars: `DATABASE_URL` (in `.env`, read by Prisma CLI) and `NEXTAUTH_URL`, `NE
 
 **Ring numbers**: always pass through `normaliseRing` and `isValidRing` in `src/lib/validation.ts` (uppercase, no spaces, `AA00[A]0000`). Duplicate rings surface as Prisma error `P2002` → 409.
 
-**UI**: `src/app/layout.tsx` wraps everything in `AuthProvider` (SessionProvider) and `AppShell` (header/nav/footer, hidden on `/auth`). Dark slate Tailwind theme. Shared UI pieces: `ConfirmModal`, `InlineError`, `ListSkeleton`/`Skeleton`.
+**UI**: `src/app/layout.tsx` wraps everything in `AuthProvider` (SessionProvider) and `AppShell` (header/nav/footer, hidden on `/auth`), inside `ThemeProvider` (`src/components/ThemeProvider.tsx`). Light/dark mode is class-based: a `.dark` class on `<html>`, persisted in `localStorage.theme`, set before first paint by an inline script in `layout.tsx`. `globals.css` defines the `dark:` variant via `@custom-variant`. Style with both light and `dark:` utilities. Shared UI pieces: `ConfirmModal`, `InlineError`, `ListSkeleton`/`Skeleton`.
