@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/auth";
 import AssignLoftButton from "@/components/AssignLoftButton";
 import DeleteBirdButton from "@/components/DeleteBirdButton";
+import { formatAge, formatDob } from "@/lib/dateOfBirth";
 
 export const dynamic = "force-dynamic";
 
@@ -45,23 +46,8 @@ export default async function BirdDashboardPage({
 
   const loftIsValid = !!bird.loft && bird.loft.deletedAt === null;
 
-  // Calculate age in whole years from dateOfBirth
-  let ageYears: number | null = null;
-  let dobDisplay: string | null = null;
-  if (bird.dateOfBirth) {
-    const today = new Date();
-    const dob = new Date(bird.dateOfBirth);
-    let age = today.getFullYear() - dob.getFullYear();
-    const hasHadBirthdayThisYear =
-      today.getMonth() > dob.getMonth() ||
-      (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
-    if (!hasHadBirthdayThisYear) age -= 1;
-    ageYears = age;
-    const dd = String(dob.getDate()).padStart(2, "0");
-    const mm = String(dob.getMonth() + 1).padStart(2, "0");
-    const yyyy = dob.getFullYear();
-    dobDisplay = `${dd}/${mm}/${yyyy}`;
-  }
+  const ageDisplay = bird.dateOfBirth ? formatAge(bird.dateOfBirth) : null;
+  const dobDisplay = bird.dateOfBirth ? formatDob(bird.dateOfBirth) : null;
 
   return (
     <main>
@@ -138,15 +124,21 @@ export default async function BirdDashboardPage({
 
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Age</p>
-          {ageYears !== null ? (
+          {ageDisplay !== null ? (
             <>
-              <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                {ageYears} {ageYears === 1 ? "year" : "years"} old
-              </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{dobDisplay}</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">{ageDisplay}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Born {dobDisplay}</p>
             </>
           ) : (
-            <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">—</p>
+            <>
+              <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">—</p>
+              <Link
+                href={`/birds/${bird.id}/edit`}
+                className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                Add date of birth
+              </Link>
+            </>
           )}
         </div>
       </div>

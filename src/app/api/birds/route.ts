@@ -3,6 +3,7 @@ import { prisma } from "@/lib/auth";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { isValidRing, normaliseRing } from "@/lib/validation";
+import { parseDob } from "@/lib/dateOfBirth";
 import { Prisma } from "@prisma/client";
 import { NextRequest } from "next/server";
 
@@ -48,16 +49,9 @@ export async function POST(req: Request) {
 
   if (!dateOfBirth) return new NextResponse("Date of birth is required", { status: 400 });
 
-  // Parse dd/mm/yyyy
-  const dobMatch = dateOfBirth.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!dobMatch) {
-    return new NextResponse("Date of birth must be in dd/mm/yyyy format", { status: 400 });
-  }
-  const [, dd, mm, yyyy] = dobMatch;
-  const parsedDob = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-  if (isNaN(parsedDob.getTime()) || parsedDob > new Date()) {
-    return new NextResponse("Invalid date of birth", { status: 400 });
-  }
+  const dob = parseDob(dateOfBirth);
+  if (dob.error !== null) return new NextResponse(dob.error, { status: 400 });
+  const parsedDob = dob.date;
 
   const normalisedRing = normaliseRing(ring);
 

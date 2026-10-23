@@ -4,12 +4,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/auth";
 import { isValidRing, normaliseRing } from "@/lib/validation";
+import { formatDob, parseDob } from "@/lib/dateOfBirth";
 import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 type Params = { id: string };
-type SearchParams = { error?: string; ring?: string; name?: string; loftId?: string };
+type SearchParams = { error?: string; ring?: string; name?: string; loftId?: string; dateOfBirth?: string };
 
 export default async function EditBirdPage({
   params,
@@ -32,7 +33,7 @@ export default async function EditBirdPage({
 
   const bird = await prisma.bird.findFirst({
     where: { id, ownerId: user.id, deletedAt: null },
-    select: { id: true, ring: true, name: true, loftId: true },
+    select: { id: true, ring: true, name: true, loftId: true, dateOfBirth: true },
   });
 
   if (!bird) notFound();
@@ -64,17 +65,24 @@ export default async function EditBirdPage({
     const ringRaw = String(formData.get("ring") ?? "");
     const nameRaw = String(formData.get("name") ?? "");
     const loftIdRaw = String(formData.get("loftId") ?? "").trim();
+    const dobRaw = String(formData.get("dateOfBirth") ?? "").trim();
 
     const ring = normaliseRing(ringRaw);
     const name = nameRaw.trim();
 
-    if (!ring) {
-      redirect(`/birds/${id}/edit?error=${encodeURIComponent("Ring number is required.")}&name=${encodeURIComponent(name)}&loftId=${encodeURIComponent(loftIdRaw)}`);
+    // Send the user back to the form with their input preserved.
+    function fail(error: string): never {
+      const qs = new URLSearchParams({ error, ring: ringRaw, name, loftId: loftIdRaw, dateOfBirth: dobRaw });
+      redirect(`/birds/${id}/edit?${qs}`);
     }
 
-    if (!isValidRing(ring)) {
-      redirect(`/birds/${id}/edit?error=${encodeURIComponent("Invalid ring format.")}&ring=${encodeURIComponent(ringRaw)}&name=${encodeURIComponent(name)}&loftId=${encodeURIComponent(loftIdRaw)}`);
-    }
+    if (!ring) fail("Ring number is required.");
+    if (!isValidRing(ring)) fail("Invalid ring format.");
+
+    if (!dobRaw) fail("Date of birth is required.");
+    const dob = parseDob(dobRaw);
+    if (dob.error !== null) fail(dob.error);
+    const dateOfBirth = dob.date;
 
     let loftId: string | null = null;
     if (loftIdRaw && loftIdRaw !== "none") {
@@ -82,19 +90,17 @@ export default async function EditBirdPage({
         where: { id: loftIdRaw, ownerId: user.id, deletedAt: null },
         select: { id: true },
       });
-      if (!loft) {
-        redirect(`/birds/${id}/edit?error=${encodeURIComponent("Invalid loft selection.")}&ring=${encodeURIComponent(ringRaw)}&name=${encodeURIComponent(name)}&loftId=${encodeURIComponent(loftIdRaw)}`);
-      }
+      if (!loft) fail("Invalid loft selection.");
       loftId = loft.id;
     }
 
     try {
-      await prisma.bird.update({ where: { id }, data: { ring, name: name || null, loftId } });
+      await prisma.bird.update({ where: { id }, data: { ring, name: name || null, loftId, dateOfBirth } });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-        redirect(`/birds/${id}/edit?error=${encodeURIComponent("That ring number already exists. Please use a unique ring.")}&ring=${encodeURIComponent(ringRaw)}&name=${encodeURIComponent(name)}&loftId=${encodeURIComponent(loftIdRaw)}`);
+        fail("That ring number already exists. Please use a unique ring.");
       }
-      redirect(`/birds/${id}/edit?error=${encodeURIComponent("Failed to save changes. Please try again.")}&ring=${encodeURIComponent(ringRaw)}&name=${encodeURIComponent(name)}&loftId=${encodeURIComponent(loftIdRaw)}`);
+      fail("Failed to save changes. Please try again.");
     }
 
     redirect(`/birds/${id}`);
@@ -103,6 +109,7 @@ export default async function EditBirdPage({
   const initialRing = sp.ring ?? bird.ring;
   const initialName = sp.name ?? (bird.name ?? "");
   const initialLoftId = sp.loftId ?? (bird.loftId ?? "none");
+  const initialDob = sp.dateOfBirth ?? (bird.dateOfBirth ? formatDob(bird.dateOfBirth) : "");
 
   return (
     <main>
@@ -155,6 +162,17 @@ export default async function EditBirdPage({
             placeholder="e.g. Newey"
             maxLength={60}
           />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Date of birth</label>
+          <input
+            name="dateOfBirth"
+            defaultValue={initialDob}
+            className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
+            placeholder="dd/mm/yyyy"
+            maxLength={10}
+          />
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">Required — format dd/mm/yyyy. Age is calculated from this.</p>
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Loft</label>

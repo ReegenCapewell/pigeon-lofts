@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import ConfirmModal from "@/components/ConfirmModal";
 import ListSkeleton from "@/components/ListSkeleton";
+import { parseDob } from "@/lib/dateOfBirth";
 
 type Loft = { id: string; name: string };
 
@@ -177,10 +178,8 @@ export default function BirdsPage() {
 
     if (!ring) { setError("Please enter a ring number."); return; }
     if (!dob) { setError("Please enter a date of birth."); return; }
-    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
-      setError("Date of birth must be in dd/mm/yyyy format.");
-      return;
-    }
+    const dobCheck = parseDob(dob);
+    if (dobCheck.error !== null) { setError(dobCheck.error); return; }
 
     try {
       setSaving(true);
