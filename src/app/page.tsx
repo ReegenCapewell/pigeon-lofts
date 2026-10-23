@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import SexIcon from "@/components/SexIcon";
 
 export const dynamic = "force-dynamic";
 
@@ -142,7 +143,8 @@ export default async function HomePage() {
                       className="group flex items-center justify-between py-3 -mx-2 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 transition"
                     >
                       <div>
-                        <span className="text-sm text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition font-medium">
+                        <span className="inline-flex items-center gap-1.5 text-sm text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition font-medium">
+                          <SexIcon sex={bird.sex} />
                           {bird.ring}
                           {bird.name ? (
                             <span className="font-normal text-slate-400 dark:text-slate-500"> – {bird.name}</span>

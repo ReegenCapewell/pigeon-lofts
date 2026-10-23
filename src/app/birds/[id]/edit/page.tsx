@@ -5,12 +5,13 @@ import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/auth";
 import { isValidRing, normaliseRing } from "@/lib/validation";
 import { formatDob, parseDob } from "@/lib/dateOfBirth";
+import { parseSex } from "@/lib/sex";
 import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 type Params = { id: string };
-type SearchParams = { error?: string; ring?: string; name?: string; loftId?: string; dateOfBirth?: string };
+type SearchParams = { error?: string; ring?: string; name?: string; loftId?: string; dateOfBirth?: string; sex?: string };
 
 export default async function EditBirdPage({
   params,
@@ -33,7 +34,7 @@ export default async function EditBirdPage({
 
   const bird = await prisma.bird.findFirst({
     where: { id, ownerId: user.id, deletedAt: null },
-    select: { id: true, ring: true, name: true, loftId: true, dateOfBirth: true },
+    select: { id: true, ring: true, name: true, loftId: true, dateOfBirth: true, sex: true },
   });
 
   if (!bird) notFound();
@@ -66,13 +67,15 @@ export default async function EditBirdPage({
     const nameRaw = String(formData.get("name") ?? "");
     const loftIdRaw = String(formData.get("loftId") ?? "").trim();
     const dobRaw = String(formData.get("dateOfBirth") ?? "").trim();
+    const sexRaw = String(formData.get("sex") ?? "");
+    const sex = parseSex(sexRaw);
 
     const ring = normaliseRing(ringRaw);
     const name = nameRaw.trim();
 
     // Send the user back to the form with their input preserved.
     function fail(error: string): never {
-      const qs = new URLSearchParams({ error, ring: ringRaw, name, loftId: loftIdRaw, dateOfBirth: dobRaw });
+      const qs = new URLSearchParams({ error, ring: ringRaw, name, loftId: loftIdRaw, dateOfBirth: dobRaw, sex: sex ?? "" });
       redirect(`/birds/${id}/edit?${qs}`);
     }
 
@@ -95,7 +98,7 @@ export default async function EditBirdPage({
     }
 
     try {
-      await prisma.bird.update({ where: { id }, data: { ring, name: name || null, loftId, dateOfBirth } });
+      await prisma.bird.update({ where: { id }, data: { ring, name: name || null, loftId, dateOfBirth, sex } });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
         fail("That ring number already exists. Please use a unique ring.");
@@ -110,6 +113,7 @@ export default async function EditBirdPage({
   const initialName = sp.name ?? (bird.name ?? "");
   const initialLoftId = sp.loftId ?? (bird.loftId ?? "none");
   const initialDob = sp.dateOfBirth ?? (bird.dateOfBirth ? formatDob(bird.dateOfBirth) : "");
+  const initialSex = sp.sex ?? (bird.sex ?? "");
 
   return (
     <main>
@@ -173,6 +177,18 @@ export default async function EditBirdPage({
             maxLength={10}
           />
           <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">Required — format dd/mm/yyyy. Age is calculated from this.</p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Sex</label>
+          <select
+            name="sex"
+            defaultValue={initialSex}
+            className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
+          >
+            <option value="">Unknown</option>
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+          </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Loft</label>

@@ -5,6 +5,8 @@ import Link from "next/link";
 import ConfirmModal from "@/components/ConfirmModal";
 import ListSkeleton from "@/components/ListSkeleton";
 import { parseDob } from "@/lib/dateOfBirth";
+import type { BirdSex } from "@/lib/sex";
+import SexIcon from "@/components/SexIcon";
 
 type Loft = { id: string; name: string };
 
@@ -14,6 +16,7 @@ type Bird = {
   name: string | null;
   loftId: string | null;
   createdAt?: string;
+  sex?: BirdSex | null;
   loft?: { id: string; name: string } | null;
 };
 
@@ -30,6 +33,7 @@ export default function BirdsPage() {
   const [newRing, setNewRing] = useState("");
   const [newName, setNewName] = useState("");
   const [newDob, setNewDob] = useState("");
+  const [newSex, setNewSex] = useState("");
   const [newLoftId, setNewLoftId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -186,7 +190,7 @@ export default function BirdsPage() {
       const res = await fetch("/api/birds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ring, name: name || null, loftId, dateOfBirth: dob }),
+        body: JSON.stringify({ ring, name: name || null, loftId, dateOfBirth: dob, sex: newSex || null }),
       });
 
       if (!res.ok) {
@@ -203,6 +207,7 @@ export default function BirdsPage() {
       setNewRing("");
       setNewName("");
       setNewDob("");
+      setNewSex("");
       setNewLoftId("none");
       await load();
     } catch (err) {
@@ -228,6 +233,7 @@ export default function BirdsPage() {
             setNewRing("");
             setNewName("");
             setNewDob("");
+            setNewSex("");
             setNewLoftId("none");
             setShowAdd(true);
           }}
@@ -302,6 +308,7 @@ export default function BirdsPage() {
               setNewRing("");
               setNewName("");
               setNewDob("");
+              setNewSex("");
               setNewLoftId("none");
               setShowAdd(true);
             }}
@@ -322,7 +329,8 @@ export default function BirdsPage() {
                   className="flex-1 flex items-center justify-between gap-4 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 -mx-2 px-2 py-1.5 transition"
                 >
                   <div>
-                    <span className="text-sm font-medium text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                      <SexIcon sex={b.sex} />
                       {b.ring}
                       {b.name ? (
                         <span className="text-slate-400 dark:text-slate-500 font-normal"> – {b.name}</span>
@@ -445,6 +453,19 @@ export default function BirdsPage() {
                   maxLength={10}
                 />
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">Required — format dd/mm/yyyy.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Sex</label>
+                <select
+                  value={newSex}
+                  onChange={(e) => setNewSex(e.target.value)}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition text-sm"
+                >
+                  <option value="">Unknown</option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                </select>
               </div>
 
               <div>

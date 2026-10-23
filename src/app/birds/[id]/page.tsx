@@ -6,6 +6,8 @@ import { prisma } from "@/lib/auth";
 import AssignLoftButton from "@/components/AssignLoftButton";
 import DeleteBirdButton from "@/components/DeleteBirdButton";
 import { formatAge, formatDob } from "@/lib/dateOfBirth";
+import { SEX_LABELS } from "@/lib/sex";
+import SexIcon from "@/components/SexIcon";
 
 export const dynamic = "force-dynamic";
 
@@ -97,7 +99,7 @@ export default async function BirdDashboardPage({
       </div>
 
       {/* Stats */}
-      <div className="py-8 border-b border-slate-100 dark:border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div className="py-8 border-b border-slate-100 dark:border-slate-800 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Ring number</p>
           <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">{bird.ring}</p>
@@ -106,6 +108,18 @@ export default async function BirdDashboardPage({
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Name</p>
           <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">{bird.name ?? "—"}</p>
+        </div>
+
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Sex</p>
+          {bird.sex ? (
+            <p className="inline-flex items-center gap-1.5 text-lg font-semibold text-slate-900 dark:text-slate-50">
+              <SexIcon sex={bird.sex} className="w-4 h-4" />
+              {SEX_LABELS[bird.sex]}
+            </p>
+          ) : (
+            <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">Unknown</p>
+          )}
         </div>
 
         <div>

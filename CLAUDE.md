@@ -12,7 +12,7 @@ Pigeon Lofts Manager ("LoftTracker"): a small Next.js 16 (App Router, React 19, 
 npm run dev        # next dev --webpack (Turbopack is deliberately disabled)
 npm run build      # next build
 npm run lint       # eslint (flat config, eslint-config-next)
-npx prisma migrate dev --name <name>   # create/apply a migration after editing prisma/schema.prisma
+npx prisma migrate deploy              # apply pending migrations to the database in DATABASE_URL (the live DB)
 npx prisma generate                    # also runs automatically on npm install (postinstall)
 ```
 
@@ -20,11 +20,13 @@ There is no test suite.
 
 Env vars: `DATABASE_URL` (in `.env`, read by Prisma CLI) and `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `DATABASE_URL` (in `.env.local`, read by Next).
 
+Migrations: `DATABASE_URL` points at the live production database, and `npm run build` does not run migrations. To change the schema, edit `prisma/schema.prisma`, hand-write `prisma/migrations/<timestamp>_<name>/migration.sql`, and run `npx prisma migrate deploy` before pushing code that uses the new columns. Don't use `prisma migrate dev`: it would try to drop the partial ring index (see below).
+
 `prisma.config.disabled` is an intentionally disabled `prisma.config.ts`; recent commits were fixing Prisma generation/deploy issues, so don't re-enable it casually. Prisma reads `prisma/schema.prisma` by default.
 
 ## Architecture
 
-**Data model** (`prisma/schema.prisma`): `User` → many `Loft`, `User` → many `Bird`; `Bird.loftId` is optional (a bird can be unassigned). `Bird.ring` is unique among non-deleted birds only, enforced by a partial unique index (`Bird_ring_active_unique`) created in raw SQL in migration `20260314000001_ring_partial_unique`. Prisma's schema can't express this index, so check any `prisma migrate dev` output and don't let it generate a migration that drops the index. `Bird.dateOfBirth` is required when creating or editing a bird but nullable in the DB (older birds may lack one). It's entered as `dd/mm/yyyy` and stored as UTC midnight: always use `parseDob` / `formatDob` / `formatAge` from `src/lib/dateOfBirth.ts` and never parse or format it with local-time `Date` methods.
+**Data model** (`prisma/schema.prisma`): `User` → many `Loft`, `User` → many `Bird`; `Bird.loftId` is optional (a bird can be unassigned). `Bird.ring` is unique among non-deleted birds only, enforced by a partial unique index (`Bird_ring_active_unique`) created in raw SQL in migration `20260314000001_ring_partial_unique`. Prisma's schema can't express this index, so check any `prisma migrate dev` output and don't let it generate a migration that drops the index. `Bird.dateOfBirth` is required when creating or editing a bird but nullable in the DB (older birds may lack one). It's entered as `dd/mm/yyyy` and stored as UTC midnight: always use `parseDob` / `formatDob` / `formatAge` from `src/lib/dateOfBirth.ts` and never parse or format it with local-time `Date` methods. `Bird.sex` is an optional `Sex` enum (`MALE`/`FEMALE`, null = unknown); use `parseSex`/`SEX_LABELS` from `src/lib/sex.ts` and render it with `<SexIcon>` next to the ring number in bird lists.
 
 **Soft deletes**: `Loft` and `Bird` have `deletedAt`. Every query must filter `deletedAt: null`, including nested includes (e.g. `birds: { where: { deletedAt: null } }`). Deleting a loft unassigns its birds (`loftId: null`) rather than deleting them; deleting a bird also clears its `loftId`.
 

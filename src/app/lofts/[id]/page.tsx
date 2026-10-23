@@ -127,6 +127,7 @@ export default async function LoftDashboardPage({
           birds={loft.birds.map((b) => ({
             id: b.id,
             ring: b.ring,
+            sex: b.sex,
             name: b.name ?? null,
             createdAt: b.createdAt.toISOString(),
           }))}

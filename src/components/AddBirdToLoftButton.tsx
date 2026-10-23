@@ -27,6 +27,7 @@ export default function AddBirdToLoftButton({
   const [ring, setRing] = useState("");
   const [name, setName] = useState("");
   const [dob, setDob] = useState("");
+  const [sex, setSex] = useState("");
   const [existingId, setExistingId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export default function AddBirdToLoftButton({
     setRing("");
     setName("");
     setDob("");
+    setSex("");
     setExistingId("");
     setError(null);
     setOpen(true);
@@ -63,6 +65,7 @@ export default function AddBirdToLoftButton({
           ring: ring.trim(),
           name: name.trim() || null,
           dateOfBirth: dob.trim(),
+          sex: sex || null,
           loftId,
         }),
       });
@@ -166,6 +169,14 @@ export default function AddBirdToLoftButton({
                       maxLength={10}
                     />
                     <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">Required — format dd/mm/yyyy.</p>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Sex</label>
+                    <select value={sex} onChange={(e) => setSex(e.target.value)} className={inputClass}>
+                      <option value="">Unknown</option>
+                      <option value="MALE">Male</option>
+                      <option value="FEMALE">Female</option>
+                    </select>
                   </div>
                 </>
               ) : unassignedBirds.length === 0 ? (

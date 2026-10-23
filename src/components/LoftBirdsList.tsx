@@ -3,13 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import ConfirmModal from "@/components/ConfirmModal";
+import SexIcon from "@/components/SexIcon";
+import type { BirdSex } from "@/lib/sex";
 
 export type LoftBird = {
   id: string;
   ring: string;
   name: string | null;
   createdAt: string;
+  sex: BirdSex | null;
 };
+
+type SexFilter = "all" | BirdSex | "unknown";
 
 export type LoftOption = {
   id: string;
@@ -29,6 +34,7 @@ export default function LoftBirdsList({
 }) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "ring">("newest");
+  const [sexFilter, setSexFilter] = useState<SexFilter>("all");
   const [localBirds, setLocalBirds] = useState<LoftBird[]>(birds);
 
   useEffect(() => { setLocalBirds(birds); }, [birds]);
@@ -61,6 +67,11 @@ export default function LoftBirdsList({
     const q = query.trim().toLowerCase();
     return localBirds
       .filter((b) => {
+        if (sexFilter === "all") return true;
+        if (sexFilter === "unknown") return !b.sex;
+        return b.sex === sexFilter;
+      })
+      .filter((b) => {
         if (!q) return true;
         return (b.ring?.toLowerCase() ?? "").includes(q) || (b.name?.toLowerCase() ?? "").includes(q);
       })
@@ -68,9 +79,9 @@ export default function LoftBirdsList({
         if (sortBy === "ring") return a.ring.localeCompare(b.ring);
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [localBirds, query, sortBy]);
+  }, [localBirds, query, sortBy, sexFilter]);
 
-  const reset = () => { setQuery(""); setSortBy("newest"); setError(null); };
+  const reset = () => { setQuery(""); setSortBy("newest"); setSexFilter("all"); setError(null); };
 
   async function moveBird(birdId: string, loftId: string | null) {
     setMenuOpenId(null);
@@ -115,7 +126,7 @@ export default function LoftBirdsList({
           </p>
         </div>
         <div className="flex items-center gap-4">
-          {(query.trim() || sortBy !== "newest" || error) ? (
+          {(query.trim() || sortBy !== "newest" || sexFilter !== "all" || error) ? (
             <button
               type="button"
               onClick={reset}
@@ -141,6 +152,17 @@ export default function LoftBirdsList({
           placeholder="Search ring or name…"
           className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none focus:border-emerald-500 transition"
         />
+        <select
+          value={sexFilter}
+          onChange={(e) => setSexFilter(e.target.value as SexFilter)}
+          className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
+          aria-label="Filter by sex"
+        >
+          <option value="all">All sexes</option>
+          <option value="MALE">Male</option>
+          <option value="FEMALE">Female</option>
+          <option value="unknown">Unknown</option>
+        </select>
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as "newest" | "ring")}
@@ -168,7 +190,8 @@ export default function LoftBirdsList({
                   href={`/birds/${b.id}`}
                   className="flex-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 -mx-2 px-2 py-1.5 transition"
                 >
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                    <SexIcon sex={b.sex} />
                     {b.ring}
                     {b.name ? (
                       <span className="text-slate-400 dark:text-slate-500 font-normal"> – {b.name}</span>

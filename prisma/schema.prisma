@@ -21,17 +21,17 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  lofts          Loft[]
-  birds          Bird[]
+  lofts Loft[]
+  birds Bird[]
 }
 
 model Loft {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
   ownerId   String
-  owner     User     @relation(fields: [ownerId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  owner     User      @relation(fields: [ownerId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
   birds     Bird[]
 }
@@ -41,6 +41,7 @@ model Bird {
   ring        String
   name        String?
   dateOfBirth DateTime?
+  sex         Sex?
   loftId      String?
   loft        Loft?     @relation(fields: [loftId], references: [id])
   ownerId     String
@@ -50,3 +51,7 @@ model Bird {
   deletedAt   DateTime?
 }
 
+enum Sex {
+  MALE
+  FEMALE
+}

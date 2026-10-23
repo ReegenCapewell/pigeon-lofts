@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { isValidRing, normaliseRing } from "@/lib/validation";
 import { parseDob } from "@/lib/dateOfBirth";
+import { parseSex } from "@/lib/sex";
 import { Prisma } from "@prisma/client";
 import { NextRequest } from "next/server";
 
@@ -38,11 +39,12 @@ export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return new NextResponse("Unauthorized", { status: 401 });
 
-  const { ring, name, loftId, dateOfBirth } = (await req.json()) as {
+  const { ring, name, loftId, dateOfBirth, sex } = (await req.json()) as {
     ring?: string;
     name?: string;
     loftId?: string | null;
     dateOfBirth?: string;
+    sex?: string | null;
   };
 
   if (!ring) return new NextResponse("Missing ring", { status: 400 });
@@ -77,6 +79,7 @@ export async function POST(req: Request) {
         ring: normalisedRing,
         name: name?.trim() ? name.trim() : null,
         dateOfBirth: parsedDob,
+        sex: parseSex(sex),
         ownerId: user.id,
         loftId: connectLoftId,
       },
