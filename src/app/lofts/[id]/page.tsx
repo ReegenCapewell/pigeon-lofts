@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/auth";
 import LoftBirdsList from "@/components/LoftBirdsList";
 import DeleteLoftButton from "@/components/DeleteLoftButton";
+import AddBirdToLoftButton from "@/components/AddBirdToLoftButton";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +42,12 @@ export default async function LoftDashboardPage({
     select: { id: true, name: true },
   });
 
-  const unassignedCount = await prisma.bird.count({
+  const unassignedBirds = await prisma.bird.findMany({
     where: { ownerId: user.id, loftId: null, deletedAt: null },
+    orderBy: { ring: "asc" },
+    select: { id: true, ring: true, name: true },
   });
+  const unassignedCount = unassignedBirds.length;
 
   const newestBird = loft.birds[0] ?? null;
 
@@ -90,7 +94,7 @@ export default async function LoftDashboardPage({
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Unassigned</p>
           <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">{unassignedCount}</p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Assign from the Birds page</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Add them below with “Add a bird”</p>
         </div>
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Newest bird</p>
@@ -117,6 +121,9 @@ export default async function LoftDashboardPage({
         <LoftBirdsList
           currentLoftId={loft.id}
           loftOptions={loftOptions}
+          headerAction={
+            <AddBirdToLoftButton loftId={loft.id} loftName={loft.name} unassignedBirds={unassignedBirds} />
+          }
           birds={loft.birds.map((b) => ({
             id: b.id,
             ring: b.ring,

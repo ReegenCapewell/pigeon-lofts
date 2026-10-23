@@ -20,10 +20,12 @@ export default function LoftBirdsList({
   birds,
   currentLoftId,
   loftOptions,
+  headerAction,
 }: {
   birds: LoftBird[];
   currentLoftId: string;
   loftOptions: LoftOption[];
+  headerAction?: React.ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "ring">("newest");
@@ -112,15 +114,18 @@ export default function LoftBirdsList({
             Click a bird to open its dashboard, or move/unassign inline.
           </p>
         </div>
-        {(query.trim() || sortBy !== "newest" || error) ? (
-          <button
-            type="button"
-            onClick={reset}
-            className="text-xs text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition whitespace-nowrap"
-          >
-            Reset
-          </button>
-        ) : null}
+        <div className="flex items-center gap-4">
+          {(query.trim() || sortBy !== "newest" || error) ? (
+            <button
+              type="button"
+              onClick={reset}
+              className="text-xs text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition whitespace-nowrap"
+            >
+              Reset
+            </button>
+          ) : null}
+          {headerAction}
+        </div>
       </div>
 
       {error ? (
