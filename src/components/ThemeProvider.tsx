@@ -1,8 +1,27 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useSyncExternalStore } from "react";
 
 type Theme = "dark" | "light";
+
+// The `.dark` class on <html> is the source of truth. The inline script in
+// layout.tsx sets it from localStorage before first paint; we just observe it.
+function subscribe(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+  return () => observer.disconnect();
+}
+
+function getSnapshot(): Theme {
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
+function getServerSnapshot(): Theme {
+  return "light";
+}
 
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
   theme: "light",
@@ -18,30 +37,16 @@ export default function ThemeProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [theme, setTheme] = useState<Theme>("light");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("theme") as Theme | null;
-    const initial = stored === "dark" ? "dark" : "light";
-    setTheme(initial);
-    if (initial === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
+  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   function toggle() {
-    setTheme((prev) => {
-      const next = prev === "dark" ? "light" : "dark";
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    try {
       localStorage.setItem("theme", next);
-      if (next === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-      return next;
-    });
+    } catch {
+      // Storage unavailable (e.g. private mode); the toggle still works for this visit.
+    }
+    document.documentElement.classList.toggle("dark", next === "dark");
   }
 
   return (
