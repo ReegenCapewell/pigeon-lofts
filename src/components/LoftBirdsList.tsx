@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import ConfirmModal from "@/components/ConfirmModal";
 import SexIcon from "@/components/SexIcon";
+import NoPedigreeBadge from "@/components/NoPedigreeBadge";
 import type { BirdSex } from "@/lib/sex";
 
 export type LoftBird = {
@@ -12,6 +13,7 @@ export type LoftBird = {
   name: string | null;
   createdAt: string;
   sex: BirdSex | null;
+  hasPedigree: boolean;
 };
 
 type SexFilter = "all" | BirdSex | "unknown";
@@ -196,6 +198,7 @@ export default function LoftBirdsList({
                     {b.name ? (
                       <span className="text-slate-400 dark:text-slate-500 font-normal"> – {b.name}</span>
                     ) : null}
+                    {!b.hasPedigree ? <NoPedigreeBadge /> : null}
                   </span>
                 </Link>
 

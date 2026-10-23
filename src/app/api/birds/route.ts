@@ -27,7 +27,7 @@ export async function GET() {
 
   const birds = await prisma.bird.findMany({
     where: { ownerId: user.id, deletedAt: null },
-    include: { loft: true },
+    include: { loft: true, pedigreeNode: { select: { sireId: true, damId: true } } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   const normalisedRing = normaliseRing(ring);
 
   if (!isValidRing(normalisedRing)) {
-    return new NextResponse("Invalid ring format", { status: 400 });
+    return new NextResponse("Invalid ring format. Use e.g. GB22T12345.", { status: 400 });
   }
 
   // If loftId provided, make sure it belongs to this user AND isn't deleted

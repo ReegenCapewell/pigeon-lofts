@@ -7,9 +7,21 @@ import AssignLoftButton from "@/components/AssignLoftButton";
 import DeleteBirdButton from "@/components/DeleteBirdButton";
 import { formatAge, formatDob } from "@/lib/dateOfBirth";
 import { SEX_LABELS } from "@/lib/sex";
+import { birdLabel } from "@/lib/pedigreeShared";
 import SexIcon from "@/components/SexIcon";
 
 export const dynamic = "force-dynamic";
+
+type ParentSummary = {
+  ring: string | null;
+  name: string | null;
+  bird: { ring: string; name: string | null } | null;
+} | null;
+
+function parentLabel(p: ParentSummary): string | null {
+  if (!p) return null;
+  return birdLabel(p.bird ?? p);
+}
 
 type Params = { id: string };
 
@@ -35,6 +47,12 @@ export default async function BirdDashboardPage({
       loft: {
         select: { id: true, name: true, deletedAt: true },
       },
+      pedigreeNode: {
+        select: {
+          sire: { select: { ring: true, name: true, bird: { select: { ring: true, name: true } } } },
+          dam: { select: { ring: true, name: true, bird: { select: { ring: true, name: true } } } },
+        },
+      },
     },
   });
 
@@ -47,6 +65,10 @@ export default async function BirdDashboardPage({
   });
 
   const loftIsValid = !!bird.loft && bird.loft.deletedAt === null;
+
+  const sire = bird.pedigreeNode?.sire ?? null;
+  const dam = bird.pedigreeNode?.dam ?? null;
+  const hasPedigree = !!(sire || dam);
 
   const ageDisplay = bird.dateOfBirth ? formatAge(bird.dateOfBirth) : null;
   const dobDisplay = bird.dateOfBirth ? formatDob(bird.dateOfBirth) : null;
@@ -157,10 +179,47 @@ export default async function BirdDashboardPage({
         </div>
       </div>
 
+      {/* Pedigree */}
+      <div className="py-8 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">Pedigree</p>
+          <Link
+            href={`/birds/${bird.id}/pedigree`}
+            className={
+              hasPedigree
+                ? "text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+                : "text-sm px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition"
+            }
+          >
+            {hasPedigree ? "View pedigree" : "Create pedigree"}
+          </Link>
+        </div>
+        {hasPedigree ? (
+          <dl className="grid grid-cols-2 gap-8">
+            <div>
+              <dt className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 mb-1">
+                <SexIcon sex="MALE" /> Sire
+              </dt>
+              <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{parentLabel(sire) ?? "Not added"}</dd>
+            </div>
+            <div>
+              <dt className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 mb-1">
+                <SexIcon sex="FEMALE" /> Dam
+              </dt>
+              <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{parentLabel(dam) ?? "Not added"}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="rounded-xl border border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+            This bird doesn&apos;t have a pedigree yet.
+          </p>
+        )}
+      </div>
+
       {/* Coming soon */}
       <div className="pt-8">
         <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-4">Coming soon</p>
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 gap-4">
           <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4">
             <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mb-1">Medical records</p>
             <p className="text-xs text-slate-400 dark:text-slate-500">Log treatments, meds, follow-ups.</p>
@@ -168,10 +227,6 @@ export default async function BirdDashboardPage({
           <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4">
             <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mb-1">Race results</p>
             <p className="text-xs text-slate-400 dark:text-slate-500">Distance, position, points, notes.</p>
-          </div>
-          <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4">
-            <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mb-1">Pedigree</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Parents, pairings, offspring lineage.</p>
           </div>
         </div>
       </div>

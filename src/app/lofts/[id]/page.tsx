@@ -30,7 +30,11 @@ export default async function LoftDashboardPage({
   const loft = await prisma.loft.findFirst({
     where: { id: loftId, ownerId: user.id, deletedAt: null },
     include: {
-      birds: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
+      birds: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        include: { pedigreeNode: { select: { sireId: true, damId: true } } },
+      },
     },
   });
 
@@ -128,6 +132,7 @@ export default async function LoftDashboardPage({
             id: b.id,
             ring: b.ring,
             sex: b.sex,
+            hasPedigree: !!(b.pedigreeNode?.sireId || b.pedigreeNode?.damId),
             name: b.name ?? null,
             createdAt: b.createdAt.toISOString(),
           }))}

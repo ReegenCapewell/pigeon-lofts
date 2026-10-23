@@ -16,7 +16,7 @@ npx prisma migrate deploy              # apply pending migrations to the databas
 npx prisma generate                    # also runs automatically on npm install (postinstall)
 ```
 
-There is no test suite.
+There is no test suite. To exercise the app without touching the live database, run a throwaway local Postgres with `NODE_OPTIONS=--experimental-sqlite npx prisma dev --name <name>` (Node 22.11 needs the flag). Point `DATABASE_URL` at it with `&pgbouncer=true&connection_limit=1` (it allows only one connection), run `prisma migrate deploy`, then start `next dev` with that `DATABASE_URL`. If it stops accepting connections after hot reloads, restart both.
 
 Env vars: `DATABASE_URL` (in `.env`, read by Prisma CLI) and `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `DATABASE_URL` (in `.env.local`, read by Next).
 
@@ -44,6 +44,14 @@ Migrations: `DATABASE_URL` points at the live production database, and `npm run 
 - List pages (`lofts/page.tsx`, `birds/page.tsx`) and components in `src/components` are client components that call the JSON API with `fetch(..., { cache: "no-store" })`.
 - API routes: `/api/lofts` (GET/POST/DELETE `?id=`), `/api/birds` (GET/POST/DELETE `?id=`), `/api/birds/assign` and `/api/birds/move` (POST `{ birdId, loftId | null }`). Error responses are inconsistent: some return plain text, some `{ error }` JSON.
 
-**Ring numbers**: always pass through `normaliseRing` and `isValidRing` in `src/lib/validation.ts` (uppercase, no spaces, `AA00[A]0000`). Duplicate rings surface as Prisma error `P2002` → 409.
+**Ring numbers**: always pass through `normaliseRing` and `isValidRing` in `src/lib/validation.ts` (uppercase, spaces/dashes removed). The format follows RPRA: 2–4 letter prefix, 2-digit year, optional letter, 4–6 digits (e.g. `GB22T12345`; GB17N/GB17Z rings have 6 digits). Duplicate rings surface as Prisma error `P2002` → 409. Manually entered pedigree ancestors are normalised but not validated, since they're often foreign rings (`NL19-1234567`).
+
+**Pedigrees** (`PedigreeNode` model, `src/lib/pedigree.ts`, `src/components/pedigree/`):
+- A pedigree is a graph, not a per-bird document. Each `PedigreeNode` has `sireId`/`damId` pointing at other nodes. A node either links to one of the owner's birds (`birdId`, unique, with ring/name/sex/DOB read from the `Bird`) or is a manually entered ancestor (`birdId` null, with ring/name/sex stored on the node). Linking a loft bird as a parent reuses that bird's node, so its whole ancestry is shared by all its offspring.
+- A bird's node is created lazily by `ensureBirdNode` (when its pedigree page opens, or when it's linked as a parent). "Has a pedigree" means its node has a `sireId` or `damId` (`hasPedigree`). Birds without one are flagged with `<NoPedigreeBadge>` in lists, on the profile and on the home page.
+- `loadTree` loads all the owner's nodes and returns everything reachable from the root, so the client navigates any depth without refetching. Slots are ahnentafel-numbered (1 = bird, 2p = sire, 2p+1 = dam) in `PedigreeGrid`. The sheet shows `PEDIGREE_GENERATIONS` (4) generations back, or 2 on phones.
+- The server must reject loops (`wouldCreateCycle`) and wrong-sex parents. Replacing or removing a parent calls `deleteOrphanedManualNode`, which deletes manual ancestors nothing else references. Loft-bird nodes are never deleted.
+- APIs: `PATCH /api/pedigree/nodes/:id` (details; ring/name only for manual nodes), `POST`/`DELETE /api/pedigree/nodes/:id/parents` (`{ role, birdId }` or `{ role, manual }`; DELETE takes `?role=`), and `POST /api/pedigree/share` (`{ birdId, enabled }`).
+- Sharing: `shareToken` on a bird's node enables the public read-only page `/p/[token]`. It's outside the middleware matcher, and `AppShell` hides the app menus there. Printing uses a separate `PrintSheet` (`hidden print:flex`) with A4 landscape `@page` rules in `globals.css`; the rest of the UI is marked `print:hidden`.
 
 **UI**: `src/app/layout.tsx` wraps everything in `AuthProvider` (SessionProvider) and `AppShell` (header/nav/footer, hidden on `/auth`), inside `ThemeProvider` (`src/components/ThemeProvider.tsx`). Light/dark mode is class-based: a `.dark` class on `<html>`, persisted in `localStorage.theme`, set before first paint by an inline script in `layout.tsx`. `globals.css` defines the `dark:` variant via `@custom-variant`. Style with both light and `dark:` utilities. Shared UI pieces: `ConfirmModal`, `InlineError`, `ListSkeleton`/`Skeleton`.

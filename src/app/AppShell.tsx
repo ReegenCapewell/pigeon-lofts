@@ -9,7 +9,10 @@ import { usePathname } from "next/navigation";
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
-  const hideChrome = pathname === "/auth";
+  // No app navigation on the login page or on public shared pedigrees.
+  const hideChrome = pathname === "/auth" || pathname.startsWith("/p/");
+  // Pedigree trees need more width than the usual page.
+  const wide = /^\/birds\/[^/]+\/pedigree/.test(pathname);
 
   if (hideChrome) {
     return <main className="min-h-screen">{children}</main>;
@@ -17,8 +20,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-30 border-b border-slate-100 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
-        <div className="mx-auto max-w-4xl px-6 py-3 flex items-center justify-between">
+      <header className="print:hidden sticky top-0 z-30 border-b border-slate-100 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
+        <div className={`mx-auto ${wide ? "max-w-6xl" : "max-w-4xl"} px-6 py-3 flex items-center justify-between`}>
           <span className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-slate-50">
             LoftTracker
           </span>
@@ -38,11 +41,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <main className="flex-1">
-        <div className="mx-auto max-w-4xl px-6 py-10">{children}</div>
+        <div className={`mx-auto ${wide ? "max-w-6xl" : "max-w-4xl"} px-6 py-10 print:max-w-none print:p-0`}>{children}</div>
       </main>
 
-      <footer className="text-xs text-slate-400 dark:text-slate-600 border-t border-slate-100 dark:border-slate-800/60">
-        <div className="mx-auto max-w-4xl px-6 py-4">
+      <footer className="print:hidden text-xs text-slate-400 dark:text-slate-600 border-t border-slate-100 dark:border-slate-800/60">
+        <div className={`mx-auto ${wide ? "max-w-6xl" : "max-w-4xl"} px-6 py-4`}>
           Built for Dad&apos;s racing pigeons
         </div>
       </footer>

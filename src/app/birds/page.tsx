@@ -7,6 +7,7 @@ import ListSkeleton from "@/components/ListSkeleton";
 import { parseDob } from "@/lib/dateOfBirth";
 import type { BirdSex } from "@/lib/sex";
 import SexIcon from "@/components/SexIcon";
+import NoPedigreeBadge from "@/components/NoPedigreeBadge";
 
 type Loft = { id: string; name: string };
 
@@ -18,6 +19,7 @@ type Bird = {
   createdAt?: string;
   sex?: BirdSex | null;
   loft?: { id: string; name: string } | null;
+  pedigreeNode?: { sireId: string | null; damId: string | null } | null;
 };
 
 export default function BirdsPage() {
@@ -354,8 +356,9 @@ export default function BirdsPage() {
                         <span className="text-slate-400 dark:text-slate-500 font-normal"> – {b.name}</span>
                       ) : null}
                     </span>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                    <p className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
                       {b.loft?.name ? `Loft: ${b.loft.name}` : "Unassigned"}
+                      {!(b.pedigreeNode?.sireId || b.pedigreeNode?.damId) ? <NoPedigreeBadge /> : null}
                     </p>
                   </div>
                   {b.createdAt ? (

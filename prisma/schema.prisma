@@ -21,8 +21,9 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  lofts Loft[]
-  birds Bird[]
+  lofts         Loft[]
+  birds         Bird[]
+  pedigreeNodes PedigreeNode[]
 }
 
 model Loft {
@@ -49,6 +50,46 @@ model Bird {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
+
+  pedigreeNode PedigreeNode?
+}
+
+// One bird in a pedigree tree. A node either links to one of the owner's own
+// birds (birdId set: ring/name/sex/DOB come from the Bird) or is an ancestor
+// entered by hand (birdId null: ring/name/sex stored here). Each node points
+// at its sire and dam, so a loft bird's ancestry is shared by all its offspring.
+model PedigreeNode {
+  id      String @id @default(cuid())
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  birdId String? @unique
+  bird   Bird?   @relation(fields: [birdId], references: [id])
+
+  // Manual ancestors only
+  ring String?
+  name String?
+  sex  Sex?
+
+  colour  String?
+  strain  String?
+  breeder String?
+  notes   String?
+
+  sireId String?
+  sire   PedigreeNode?  @relation("Sire", fields: [sireId], references: [id], onDelete: SetNull)
+  sireOf PedigreeNode[] @relation("Sire")
+  damId  String?
+  dam    PedigreeNode?  @relation("Dam", fields: [damId], references: [id], onDelete: SetNull)
+  damOf  PedigreeNode[] @relation("Dam")
+
+  // Set when the owner turns on a read-only share link (loft-bird nodes only)
+  shareToken String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
 }
 
 enum Sex {

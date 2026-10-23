@@ -80,7 +80,7 @@ export default async function EditBirdPage({
     }
 
     if (!ring) fail("Ring number is required.");
-    if (!isValidRing(ring)) fail("Invalid ring format.");
+    if (!isValidRing(ring)) fail("Invalid ring format. Use e.g. GB22T12345.");
 
     if (!dobRaw) fail("Date of birth is required.");
     const dob = parseDob(dobRaw);

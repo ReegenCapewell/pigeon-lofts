@@ -27,8 +27,19 @@ export default async function HomePage() {
     },
   });
 
-  const loftCount = user?.lofts.length ?? 0;
-  const birdCount = user?.birds.length ?? 0;
+  // The lists above only hold the 5 most recent, so count separately.
+  const ownerId = user?.id ?? "";
+  const [loftCount, birdCount, missingPedigreeCount] = await Promise.all([
+    prisma.loft.count({ where: { ownerId, deletedAt: null } }),
+    prisma.bird.count({ where: { ownerId, deletedAt: null } }),
+    prisma.bird.count({
+      where: {
+        ownerId,
+        deletedAt: null,
+        OR: [{ pedigreeNode: { is: null } }, { pedigreeNode: { is: { sireId: null, damId: null } } }],
+      },
+    }),
+  ]);
 
   return (
     <main>
@@ -73,6 +84,17 @@ export default async function HomePage() {
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 uppercase tracking-wide">Races</p>
         </div>
       </div>
+
+      {missingPedigreeCount > 0 ? (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            {missingPedigreeCount === 1 ? "1 bird doesn't" : `${missingPedigreeCount} birds don't`} have a pedigree yet.
+          </p>
+          <Link href="/birds" className="text-sm font-medium text-amber-800 dark:text-amber-200 hover:underline">
+            View birds →
+          </Link>
+        </div>
+      ) : null}
 
       {/* Recent sections */}
       <div className="grid md:grid-cols-2 gap-0 md:gap-12 mt-0">
