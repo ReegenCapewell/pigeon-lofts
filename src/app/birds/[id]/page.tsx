@@ -8,6 +8,7 @@ import DeleteBirdButton from "@/components/DeleteBirdButton";
 import { formatAge, formatDob } from "@/lib/dateOfBirth";
 import { SEX_LABELS } from "@/lib/sex";
 import { birdLabel } from "@/lib/pedigreeShared";
+import { RACE_STATUS_LABELS, bestPosition, compareForPedigree, dateKey, pedigreeLine } from "@/lib/races";
 import SexIcon from "@/components/SexIcon";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,9 @@ export default async function BirdDashboardPage({
       loft: {
         select: { id: true, name: true, deletedAt: true },
       },
+      raceResults: {
+        select: { raceName: true, raceDate: true, raceType: true, status: true, clubPosition: true, fedPosition: true, openPosition: true },
+      },
       pedigreeNode: {
         select: {
           sire: { select: { ring: true, name: true, bird: { select: { ring: true, name: true } } } },
@@ -65,6 +69,15 @@ export default async function BirdDashboardPage({
   });
 
   const loftIsValid = !!bird.loft && bird.loft.deletedAt === null;
+
+  const races = bird.raceResults.map((r) => ({ ...r, raceDate: formatDob(r.raceDate) }));
+  const raceWins = races.filter((r) => bestPosition(r) === 1).length;
+  const placed = races.filter((r) => bestPosition(r) !== null).sort(compareForPedigree);
+  const bestRaceLine = placed.length ? pedigreeLine(placed[0]) : null;
+  const latest = [...races].sort((a, b) => dateKey(b.raceDate) - dateKey(a.raceDate))[0];
+  const latestRaceLine = latest
+    ? `${pedigreeLine(latest)}${bestPosition(latest) === null ? ` · ${RACE_STATUS_LABELS[latest.status]}` : ""}`
+    : null;
 
   const sire = bird.pedigreeNode?.sire ?? null;
   const dam = bird.pedigreeNode?.dam ?? null;
@@ -216,6 +229,45 @@ export default async function BirdDashboardPage({
         )}
       </div>
 
+      {/* Race stats */}
+      <div className="py-8 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">Race stats</p>
+          <Link
+            href={`/birds/${bird.id}/races`}
+            className={
+              races.length
+                ? "text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+                : "text-sm px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition"
+            }
+          >
+            {races.length ? "View race stats" : "Add race results"}
+          </Link>
+        </div>
+        {races.length ? (
+          <dl className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div>
+              <dt className="text-xs text-slate-400 dark:text-slate-500 mb-1">Races</dt>
+              <dd className="text-lg font-semibold text-slate-900 dark:text-slate-50">{races.length}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-400 dark:text-slate-500 mb-1">Wins</dt>
+              <dd className="text-lg font-semibold text-slate-900 dark:text-slate-50">{raceWins}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-400 dark:text-slate-500 mb-1">Best placing</dt>
+              <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{bestRaceLine ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-400 dark:text-slate-500 mb-1">Latest</dt>
+              <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{latestRaceLine}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="text-sm text-slate-500 dark:text-slate-400">No race results logged yet.</p>
+        )}
+      </div>
+
       {/* Coming soon */}
       <div className="pt-8">
         <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-4">Coming soon</p>
@@ -223,10 +275,6 @@ export default async function BirdDashboardPage({
           <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4">
             <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mb-1">Medical records</p>
             <p className="text-xs text-slate-400 dark:text-slate-500">Log treatments, meds, follow-ups.</p>
-          </div>
-          <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4">
-            <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mb-1">Race results</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Distance, position, points, notes.</p>
           </div>
         </div>
       </div>

@@ -14,6 +14,7 @@ export type PedNode = {
   name: string | null;
   sex: BirdSex | null;
   dateOfBirth: string | null; // dd/mm/yyyy, loft birds only
+  results: string[]; // race results ticked "show on pedigree", best first (loft birds only)
   colour: string | null;
   strain: string | null;
   breeder: string | null;

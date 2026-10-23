@@ -29,7 +29,7 @@ export default async function HomePage() {
 
   // The lists above only hold the 5 most recent, so count separately.
   const ownerId = user?.id ?? "";
-  const [loftCount, birdCount, missingPedigreeCount] = await Promise.all([
+  const [loftCount, birdCount, missingPedigreeCount, raceCount] = await Promise.all([
     prisma.loft.count({ where: { ownerId, deletedAt: null } }),
     prisma.bird.count({ where: { ownerId, deletedAt: null } }),
     prisma.bird.count({
@@ -39,6 +39,7 @@ export default async function HomePage() {
         OR: [{ pedigreeNode: { is: null } }, { pedigreeNode: { is: { sireId: null, damId: null } } }],
       },
     }),
+    prisma.raceResult.count({ where: { ownerId, bird: { deletedAt: null } } }),
   ]);
 
   return (
@@ -79,9 +80,9 @@ export default async function HomePage() {
           <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">{birdCount}</p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 uppercase tracking-wide">Birds</p>
         </div>
-        <div className="opacity-40">
-          <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">—</p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 uppercase tracking-wide">Races</p>
+        <div>
+          <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">{raceCount}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 uppercase tracking-wide">Race results</p>
         </div>
       </div>
 

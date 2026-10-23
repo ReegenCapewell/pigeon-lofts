@@ -24,6 +24,7 @@ model User {
   lofts         Loft[]
   birds         Bird[]
   pedigreeNodes PedigreeNode[]
+  raceResults   RaceResult[]
 }
 
 model Loft {
@@ -52,6 +53,7 @@ model Bird {
   deletedAt   DateTime?
 
   pedigreeNode PedigreeNode?
+  raceResults  RaceResult[]
 }
 
 // One bird in a pedigree tree. A node either links to one of the owner's own
@@ -90,6 +92,66 @@ model PedigreeNode {
   updatedAt DateTime @updatedAt
 
   @@index([ownerId])
+}
+
+// One race a bird took part in. Everything except race name and date is
+// optional; flying time and velocity are calculated from liberationTime,
+// clockTime (+ clockDayOffset days) and distanceYards rather than stored.
+model RaceResult {
+  id      String @id @default(cuid())
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+  birdId  String
+  bird    Bird   @relation(fields: [birdId], references: [id])
+
+  raceName     String // race point, e.g. "Bourges"
+  raceDate     DateTime // UTC midnight, like Bird.dateOfBirth
+  organisation String?
+  raceType     RaceType?
+  status       RaceStatus @default(PLACED)
+
+  liberationTime String? // "HH:MM" or "HH:MM:SS"
+  clockTime      String?
+  clockDayOffset Int     @default(0) // 1 = clocked the day after liberation
+  distanceYards  Int?
+
+  clubPosition Int?
+  clubBirds    Int?
+  clubLofts    Int?
+  fedPosition  Int?
+  fedBirds     Int?
+  fedLofts     Int?
+  openPosition Int? // Combine / National / Open
+  openBirds    Int?
+  openLofts    Int?
+
+  points     Float?
+  prizePence Int?
+
+  weather String?
+  wind    String?
+  notes   String?
+
+  showOnPedigree Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([birdId])
+  @@index([ownerId])
+}
+
+enum RaceType {
+  OLD_BIRD
+  YOUNG_BIRD
+}
+
+enum RaceStatus {
+  PLACED
+  CLOCKED
+  NOT_CLOCKED
+  LATE
+  LOST
 }
 
 enum Sex {

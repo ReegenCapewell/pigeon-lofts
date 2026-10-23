@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/auth";
 import { formatDob } from "@/lib/dateOfBirth";
 import type { PedNode, PedTree } from "@/lib/pedigreeShared";
+import { compareForPedigree, pedigreeLine } from "@/lib/races";
 
 const nodeSelect = {
   id: true,
@@ -14,8 +15,36 @@ const nodeSelect = {
   notes: true,
   sireId: true,
   damId: true,
-  bird: { select: { ring: true, name: true, sex: true, dateOfBirth: true } },
+  bird: {
+    select: {
+      ring: true,
+      name: true,
+      sex: true,
+      dateOfBirth: true,
+      raceResults: {
+        where: { showOnPedigree: true },
+        select: { raceName: true, raceDate: true, raceType: true, clubPosition: true, fedPosition: true, openPosition: true },
+      },
+    },
+  },
 } as const;
+
+type PedigreeRaceRow = {
+  raceName: string;
+  raceDate: Date;
+  raceType: "OLD_BIRD" | "YOUNG_BIRD" | null;
+  clubPosition: number | null;
+  fedPosition: number | null;
+  openPosition: number | null;
+};
+
+// Race results ticked "show on pedigree", best placing first, as display lines.
+function pedigreeResultLines(rows: PedigreeRaceRow[]): string[] {
+  return rows
+    .map((r) => ({ ...r, raceDate: formatDob(r.raceDate) }))
+    .sort(compareForPedigree)
+    .map(pedigreeLine);
+}
 
 type NodeRow = {
   id: string;
@@ -29,7 +58,13 @@ type NodeRow = {
   notes: string | null;
   sireId: string | null;
   damId: string | null;
-  bird: { ring: string; name: string | null; sex: "MALE" | "FEMALE" | null; dateOfBirth: Date | null } | null;
+  bird: {
+    ring: string;
+    name: string | null;
+    sex: "MALE" | "FEMALE" | null;
+    dateOfBirth: Date | null;
+    raceResults: PedigreeRaceRow[];
+  } | null;
 };
 
 function toPedNode(row: NodeRow): PedNode {
@@ -42,6 +77,7 @@ function toPedNode(row: NodeRow): PedNode {
     name: b ? b.name : row.name,
     sex: b ? b.sex : row.sex,
     dateOfBirth: b?.dateOfBirth ? formatDob(b.dateOfBirth) : null,
+    results: b ? pedigreeResultLines(b.raceResults) : [],
     colour: row.colour,
     strain: row.strain,
     breeder: row.breeder,
@@ -164,6 +200,18 @@ export async function checkBirdChange(
   birdId: string,
   next: { sex: "MALE" | "FEMALE" | null; dateOfBirth: Date | null }
 ): Promise<string | null> {
+  const dob = next.dateOfBirth;
+  if (dob) {
+    const firstRace = await prisma.raceResult.findFirst({
+      where: { birdId, raceDate: { lt: dob } },
+      orderBy: { raceDate: "asc" },
+      select: { raceName: true, raceDate: true },
+    });
+    if (firstRace) {
+      return `It raced at ${firstRace.raceName} on ${formatDob(firstRace.raceDate)}, so it must be born before that.`;
+    }
+  }
+
   const birdSel = { select: { ring: true, dateOfBirth: true } } as const;
   const node = await prisma.pedigreeNode.findUnique({
     where: { birdId },
@@ -183,7 +231,6 @@ export async function checkBirdChange(
     return "This bird is a dam in a pedigree, so its sex must be Female. Change the pedigree first if this is wrong.";
   }
 
-  const dob = next.dateOfBirth;
   if (dob) {
     for (const p of [node.sire?.bird, node.dam?.bird]) {
       if (p?.dateOfBirth && p.dateOfBirth >= dob) {

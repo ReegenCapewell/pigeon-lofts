@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import SharedModal from "@/components/Modal";
 import { PIGEON_COLOURS, birdLabel, dobValue, type LoftBirdOption, type ParentRole, type PedNode } from "@/lib/pedigreeShared";
 
 const inputClass =
@@ -33,34 +34,9 @@ async function sendJson(url: string, method: string, body?: unknown): Promise<st
   }
 }
 
-export function Modal({
-  title,
-  subtitle,
-  onClose,
-  children,
-  wide = false,
-}: {
-  title: string;
-  subtitle?: React.ReactNode;
-  onClose: () => void;
-  children: React.ReactNode;
-  wide?: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden">
-      <div className="absolute inset-0 bg-black/40 dark:bg-black/60" onClick={onClose} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className={`relative w-full ${wide ? "max-w-lg" : "max-w-md"} max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 p-6 shadow-2xl shadow-black/10 dark:shadow-black/50`}
-      >
-        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50 mb-1">{title}</h3>
-        {subtitle ? <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">{subtitle}</p> : <div className="mb-4" />}
-        {children}
-      </div>
-    </div>
-  );
+// Kept for existing imports; `wide` maps to the larger dialog size.
+export function Modal({ wide = false, ...props }: Omit<React.ComponentProps<typeof SharedModal>, "size"> & { wide?: boolean }) {
+  return <SharedModal {...props} size={wide ? "lg" : "md"} />;
 }
 
 function ErrorText({ error }: { error: string | null }) {

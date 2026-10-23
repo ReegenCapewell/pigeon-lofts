@@ -323,6 +323,9 @@ function NodeDetails({
         <Detail label="Strain" value={n.strain} />
         <Detail label="Breeder" value={n.breeder} />
         <div className="col-span-2">
+          <Detail label="Race results" value={n.results.length ? n.results.join("\n") : null} />
+        </div>
+        <div className="col-span-2">
           <Detail label="Performance / notes" value={n.notes} />
         </div>
       </dl>
@@ -332,7 +335,10 @@ function NodeDetails({
           <button type="button" onClick={onExplore} className={pillButton}>Show its pedigree →</button>
         ) : null}
         {editable && n.birdId ? (
-          <Link href={`/birds/${n.birdId}`} className={pillButton}>Open bird page</Link>
+          <>
+            <Link href={`/birds/${n.birdId}`} className={pillButton}>Open bird page</Link>
+            <Link href={`/birds/${n.birdId}/races`} className={pillButton}>Race stats</Link>
+          </>
         ) : null}
         {editable ? (
           <button type="button" onClick={onEdit} className={pillButton}>Edit details</button>

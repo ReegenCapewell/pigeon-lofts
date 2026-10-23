@@ -202,6 +202,9 @@ function BirdBox({
   const showBreeder = !compact && g <= 1;
   const showNotes = !compact && g <= 1;
   const showDob = !compact && g === 0;
+  // Race results from the bird's race stats page, best first.
+  const resultLimit = compact ? 0 : g <= 1 ? 4 : g === 2 ? 2 : 1;
+  const results = node.results.slice(0, resultLimit);
 
   const accent =
     node.sex === "MALE"
@@ -223,6 +226,9 @@ function BirdBox({
         {showDob && node.dateOfBirth ? <p>Born {node.dateOfBirth}</p> : null}
         {showStrain && node.strain ? <p>{node.strain}</p> : null}
         {showBreeder && node.breeder ? <p>Bred by {node.breeder}</p> : null}
+        {results.map((line) => (
+          <p key={line} className="font-semibold">{line}</p>
+        ))}
         {showNotes && node.notes ? <p className="whitespace-pre-line">{node.notes}</p> : null}
       </div>
     );
@@ -278,6 +284,11 @@ function BirdBox({
         {showBreeder && node.breeder ? (
           <span className="block truncate text-[11px] text-slate-500 dark:text-slate-400">Bred by {node.breeder}</span>
         ) : null}
+        {results.map((line) => (
+          <span key={line} className="block truncate text-[11px] font-medium text-emerald-700 dark:text-emerald-300" title={line}>
+            {line}
+          </span>
+        ))}
         {showNotes && node.notes ? (
           <span className="block text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 whitespace-pre-line">{node.notes}</span>
         ) : null}
