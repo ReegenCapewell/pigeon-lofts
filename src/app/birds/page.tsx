@@ -27,6 +27,7 @@ export default function BirdsPage() {
 
   const [query, setQuery] = useState("");
   const [loftFilter, setLoftFilter] = useState<string>("all");
+  const [sexFilter, setSexFilter] = useState<"all" | BirdSex | "unknown">("all");
   const [sortBy, setSortBy] = useState<"newest" | "ring">("newest");
 
   const [showAdd, setShowAdd] = useState(false);
@@ -154,6 +155,11 @@ export default function BirdsPage() {
         return b.loftId === loftFilter;
       })
       .filter((b) => {
+        if (sexFilter === "all") return true;
+        if (sexFilter === "unknown") return !b.sex;
+        return b.sex === sexFilter;
+      })
+      .filter((b) => {
         if (!q) return true;
         return (b.ring?.toLowerCase() ?? "").includes(q) || (b.name?.toLowerCase() ?? "").includes(q);
       })
@@ -163,11 +169,12 @@ export default function BirdsPage() {
         const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return bTime - aTime;
       });
-  }, [birds, query, loftFilter, sortBy]);
+  }, [birds, query, loftFilter, sexFilter, sortBy]);
 
   const clearFilters = () => {
     setQuery("");
     setLoftFilter("all");
+    setSexFilter("all");
     setSortBy("newest");
   };
 
@@ -257,7 +264,7 @@ export default function BirdsPage() {
           placeholder="Search by ring or name…"
           className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none focus:border-emerald-500 transition"
         />
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <select
             value={loftFilter}
             onChange={(e) => setLoftFilter(e.target.value)}
@@ -270,6 +277,17 @@ export default function BirdsPage() {
             ))}
           </select>
           <select
+            value={sexFilter}
+            onChange={(e) => setSexFilter(e.target.value as "all" | BirdSex | "unknown")}
+            className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
+            aria-label="Filter by sex"
+          >
+            <option value="all">All sexes</option>
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+            <option value="unknown">Unknown</option>
+          </select>
+          <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as "newest" | "ring")}
             className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition"
@@ -277,7 +295,7 @@ export default function BirdsPage() {
             <option value="newest">Newest first</option>
             <option value="ring">Ring (A → Z)</option>
           </select>
-          {(query.trim() || loftFilter !== "all" || sortBy !== "newest") && (
+          {(query.trim() || loftFilter !== "all" || sexFilter !== "all" || sortBy !== "newest") && (
             <button
               type="button"
               onClick={clearFilters}
