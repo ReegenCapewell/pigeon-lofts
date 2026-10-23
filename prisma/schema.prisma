@@ -21,10 +21,11 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  lofts         Loft[]
-  birds         Bird[]
-  pedigreeNodes PedigreeNode[]
-  raceResults   RaceResult[]
+  lofts          Loft[]
+  birds          Bird[]
+  pedigreeNodes  PedigreeNode[]
+  raceResults    RaceResult[]
+  medicalRecords MedicalRecord[]
 }
 
 model Loft {
@@ -52,8 +53,9 @@ model Bird {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  pedigreeNode PedigreeNode?
-  raceResults  RaceResult[]
+  pedigreeNode   PedigreeNode?
+  raceResults    RaceResult[]
+  medicalRecords MedicalRecord[]
 }
 
 // One bird in a pedigree tree. A node either links to one of the owner's own
@@ -139,6 +141,51 @@ model RaceResult {
 
   @@index([birdId])
   @@index([ownerId])
+}
+
+// One health event for one bird. A record logged for a whole loft or several
+// birds at once creates one row per bird sharing a batchId, so each bird's
+// copy can still be edited or deleted on its own.
+model MedicalRecord {
+  id      String @id @default(cuid())
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+  birdId  String
+  bird    Bird   @relation(fields: [birdId], references: [id])
+
+  type         MedicalType
+  date         DateTime // given / started / visit / check date (UTC midnight)
+  endDate      DateTime? // treatments: last day
+  nextDueDate  DateTime? // reminder date, e.g. a vaccine booster
+  reminderDone Boolean     @default(false)
+
+  category    String? // vaccine (PMV, POX, ...) or condition (CANKER, WORMS, ...) code
+  title       String? // custom name, or symptoms/diagnosis for illness
+  product     String? // vaccine or medicine name
+  batchNumber String?
+  dose        String?
+  method      String? // WATER, TABLET, INJECTION, ...
+  vet         String?
+  outcome     String? // illness: RECOVERED, ONGOING, ...
+  weightGrams Int?
+  condition   String? // health check: EXCELLENT, GOOD, FAIR, POOR
+  notes       String?
+
+  batchId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([birdId])
+  @@index([ownerId, nextDueDate])
+  @@index([batchId])
+}
+
+enum MedicalType {
+  VACCINATION
+  TREATMENT
+  ILLNESS
+  HEALTH_CHECK
 }
 
 enum RaceType {

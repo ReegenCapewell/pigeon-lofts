@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmModal from "@/components/ConfirmModal";
 import RaceForm from "./RaceForm";
+import { pmvCoveredOn } from "@/lib/medical";
 import {
   LEVELS,
   RACE_STATUS_LABELS,
@@ -42,10 +43,12 @@ export default function RaceResultsView({
   birdId,
   birdLabel,
   results,
+  pmvPeriods,
 }: {
   birdId: string;
   birdLabel: string;
   results: RaceResultDTO[];
+  pmvPeriods: { from: string; until: string }[];
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<RaceResultDTO | "new" | null>(null);
@@ -187,6 +190,11 @@ export default function RaceResultsView({
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {!pmvCoveredOn(pmvPeriods, r.raceDate) ? (
+                      <span title="No PMV vaccination recorded covering this race date" className="rounded-full px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                        No current PMV
+                      </span>
+                    ) : null}
                     <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusStyle[r.status]}`}>
                       {RACE_STATUS_LABELS[r.status]}
                     </span>
@@ -255,6 +263,7 @@ export default function RaceResultsView({
           birdId={birdId}
           birdLabel={birdLabel}
           result={editing === "new" ? null : editing}
+          pmvPeriods={pmvPeriods}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);

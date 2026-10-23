@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/authOptions";
 import { isValidRing, normaliseRing } from "@/lib/validation";
 import { parseDob } from "@/lib/dateOfBirth";
 import { parseSex } from "@/lib/sex";
+import { pmvStatus } from "@/lib/medical";
+import { pmvRowsToInput, pmvSelect } from "@/lib/medicalQueries";
 import { Prisma } from "@prisma/client";
 import { NextRequest } from "next/server";
 
@@ -27,11 +29,13 @@ export async function GET() {
 
   const birds = await prisma.bird.findMany({
     where: { ownerId: user.id, deletedAt: null },
-    include: { loft: true, pedigreeNode: { select: { sireId: true, damId: true } } },
+    include: { loft: true, pedigreeNode: { select: { sireId: true, damId: true } }, medicalRecords: pmvSelect },
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ birds });
+  return NextResponse.json({
+    birds: birds.map(({ medicalRecords, ...b }) => ({ ...b, pmv: pmvStatus(pmvRowsToInput(medicalRecords)) })),
+  });
 }
 
 // POST /api/birds -> create bird for current user (optional loft)

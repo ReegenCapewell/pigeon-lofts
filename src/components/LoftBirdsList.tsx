@@ -5,6 +5,8 @@ import Link from "next/link";
 import ConfirmModal from "@/components/ConfirmModal";
 import SexIcon from "@/components/SexIcon";
 import NoPedigreeBadge from "@/components/NoPedigreeBadge";
+import PmvBadge from "@/components/medical/PmvBadge";
+import type { PmvStatus } from "@/lib/medical";
 import type { BirdSex } from "@/lib/sex";
 
 export type LoftBird = {
@@ -14,6 +16,7 @@ export type LoftBird = {
   createdAt: string;
   sex: BirdSex | null;
   hasPedigree: boolean;
+  pmv: PmvStatus;
 };
 
 type SexFilter = "all" | BirdSex | "unknown";
@@ -199,6 +202,7 @@ export default function LoftBirdsList({
                       <span className="text-slate-400 dark:text-slate-500 font-normal"> – {b.name}</span>
                     ) : null}
                     {!b.hasPedigree ? <NoPedigreeBadge /> : null}
+                    <PmvBadge status={b.pmv} />
                   </span>
                 </Link>
 

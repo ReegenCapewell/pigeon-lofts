@@ -210,6 +210,14 @@ export async function checkBirdChange(
     if (firstRace) {
       return `It raced at ${firstRace.raceName} on ${formatDob(firstRace.raceDate)}, so it must be born before that.`;
     }
+    const firstMedical = await prisma.medicalRecord.findFirst({
+      where: { birdId, date: { lt: dob } },
+      orderBy: { date: "asc" },
+      select: { date: true },
+    });
+    if (firstMedical) {
+      return `It has a medical record dated ${formatDob(firstMedical.date)}, so it must be born before that.`;
+    }
   }
 
   const birdSel = { select: { ring: true, dateOfBirth: true } } as const;

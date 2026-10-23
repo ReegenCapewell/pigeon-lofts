@@ -20,7 +20,7 @@ export default function NavLink({ href, children, exact }: Props) {
   return (
     <Link
       href={href}
-      className={`relative px-3 py-1.5 rounded-lg text-sm transition ${
+      className={`relative px-2 sm:px-3 py-1.5 rounded-lg text-sm transition ${
         isActive
           ? "text-emerald-600 dark:text-emerald-400 font-medium"
           : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-slate-800/60"

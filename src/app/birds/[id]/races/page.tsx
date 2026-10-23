@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/auth";
 import { raceResultSelect } from "@/lib/raceQueries";
 import { toRaceDTO } from "@/lib/races";
+import { pmvPeriods } from "@/lib/medical";
+import { pmvRowsToInput, pmvSelect } from "@/lib/medicalQueries";
 import RaceResultsView from "@/components/races/RaceResultsView";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +30,7 @@ export default async function BirdRacesPage({ params }: { params: Promise<{ id: 
       ring: true,
       name: true,
       raceResults: { select: raceResultSelect },
+      medicalRecords: pmvSelect,
     },
   });
   if (!bird) notFound();
@@ -62,7 +65,12 @@ export default async function BirdRacesPage({ params }: { params: Promise<{ id: 
         </Link>
       </div>
 
-      <RaceResultsView birdId={bird.id} birdLabel={label} results={bird.raceResults.map(toRaceDTO)} />
+      <RaceResultsView
+        birdId={bird.id}
+        birdLabel={label}
+        results={bird.raceResults.map(toRaceDTO)}
+        pmvPeriods={pmvPeriods(pmvRowsToInput(bird.medicalRecords))}
+      />
     </main>
   );
 }

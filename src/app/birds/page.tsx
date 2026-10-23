@@ -8,6 +8,8 @@ import { parseDob } from "@/lib/dateOfBirth";
 import type { BirdSex } from "@/lib/sex";
 import SexIcon from "@/components/SexIcon";
 import NoPedigreeBadge from "@/components/NoPedigreeBadge";
+import PmvBadge from "@/components/medical/PmvBadge";
+import type { PmvStatus } from "@/lib/medical";
 
 type Loft = { id: string; name: string };
 
@@ -20,6 +22,7 @@ type Bird = {
   sex?: BirdSex | null;
   loft?: { id: string; name: string } | null;
   pedigreeNode?: { sireId: string | null; damId: string | null } | null;
+  pmv?: PmvStatus;
 };
 
 export default function BirdsPage() {
@@ -359,6 +362,7 @@ export default function BirdsPage() {
                     <p className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
                       {b.loft?.name ? `Loft: ${b.loft.name}` : "Unassigned"}
                       {!(b.pedigreeNode?.sireId || b.pedigreeNode?.damId) ? <NoPedigreeBadge /> : null}
+                      {b.pmv ? <PmvBadge status={b.pmv} /> : null}
                     </p>
                   </div>
                   {b.createdAt ? (

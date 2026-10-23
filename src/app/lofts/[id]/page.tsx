@@ -6,6 +6,8 @@ import { prisma } from "@/lib/auth";
 import LoftBirdsList from "@/components/LoftBirdsList";
 import DeleteLoftButton from "@/components/DeleteLoftButton";
 import AddBirdToLoftButton from "@/components/AddBirdToLoftButton";
+import { pmvStatus } from "@/lib/medical";
+import { pmvRowsToInput, pmvSelect } from "@/lib/medicalQueries";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +35,7 @@ export default async function LoftDashboardPage({
       birds: {
         where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
-        include: { pedigreeNode: { select: { sireId: true, damId: true } } },
+        include: { pedigreeNode: { select: { sireId: true, damId: true } }, medicalRecords: pmvSelect },
       },
     },
   });
@@ -133,6 +135,7 @@ export default async function LoftDashboardPage({
             ring: b.ring,
             sex: b.sex,
             hasPedigree: !!(b.pedigreeNode?.sireId || b.pedigreeNode?.damId),
+            pmv: pmvStatus(pmvRowsToInput(b.medicalRecords)),
             name: b.name ?? null,
             createdAt: b.createdAt.toISOString(),
           }))}

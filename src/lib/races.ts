@@ -1,6 +1,6 @@
 // Race result helpers shared by the API, pages and pedigree.
 // Plain TypeScript (no Prisma imports) so client components can use it.
-import { formatDob, parseDob } from "@/lib/dateOfBirth";
+import { formatDob, parseDay } from "@/lib/dateOfBirth";
 
 export type RaceType = "OLD_BIRD" | "YOUNG_BIRD";
 export type RaceStatus = "PLACED" | "CLOCKED" | "NOT_CLOCKED" | "LATE" | "LOST";
@@ -220,10 +220,8 @@ export function parseRaceInput(
 
   const dateRaw = typeof input.raceDate === "string" ? input.raceDate : "";
   if (!dateRaw.trim()) return fail("Enter the race date.");
-  const parsed = parseDob(dateRaw, now);
-  if (parsed.error !== null) {
-    return fail(parsed.error.replace("Date of birth", "Race date").replace("date of birth", "race date"));
-  }
+  const parsed = parseDay(dateRaw, { label: "Race date", now });
+  if (parsed.error !== null) return fail(parsed.error);
   const raceDate = parsed.date;
   if (birdDob && raceDate < birdDob) {
     return fail(`The race date is before this bird was born (${formatDob(birdDob)}).`);

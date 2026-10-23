@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import SexIcon from "@/components/SexIcon";
+import { todayUtc } from "@/lib/dateOfBirth";
+import { DUE_SOON_DAYS } from "@/lib/medical";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +31,12 @@ export default async function HomePage() {
 
   // The lists above only hold the 5 most recent, so count separately.
   const ownerId = user?.id ?? "";
-  const [loftCount, birdCount, missingPedigreeCount, raceCount] = await Promise.all([
+  const today = todayUtc();
+  const soon = new Date(today);
+  soon.setUTCDate(soon.getUTCDate() + DUE_SOON_DAYS);
+  const openReminder = { ownerId, reminderDone: false, bird: { deletedAt: null } };
+
+  const [loftCount, birdCount, missingPedigreeCount, raceCount, overdueRows, dueSoonRows] = await Promise.all([
     prisma.loft.count({ where: { ownerId, deletedAt: null } }),
     prisma.bird.count({ where: { ownerId, deletedAt: null } }),
     prisma.bird.count({
@@ -40,7 +47,13 @@ export default async function HomePage() {
       },
     }),
     prisma.raceResult.count({ where: { ownerId, bird: { deletedAt: null } } }),
+    prisma.medicalRecord.findMany({ where: { ...openReminder, nextDueDate: { lt: today } }, select: { id: true, batchId: true } }),
+    prisma.medicalRecord.findMany({ where: { ...openReminder, nextDueDate: { gte: today, lte: soon } }, select: { id: true, batchId: true } }),
   ]);
+  // A reminder logged for a whole loft at once counts as one.
+  const groups = (rows: { id: string; batchId: string | null }[]) => new Set(rows.map((r) => r.batchId ?? r.id)).size;
+  const overdueCount = groups(overdueRows);
+  const dueSoonCount = groups(dueSoonRows);
 
   return (
     <main>
@@ -85,6 +98,26 @@ export default async function HomePage() {
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 uppercase tracking-wide">Race results</p>
         </div>
       </div>
+
+      {overdueCount + dueSoonCount > 0 ? (
+        <div
+          className={`mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+            overdueCount
+              ? "border-red-300 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-200"
+              : "border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200"
+          }`}
+        >
+          <p className="text-sm">
+            Health reminders: {[overdueCount ? `${overdueCount} overdue` : null, dueSoonCount ? `${dueSoonCount} due in the next two weeks` : null]
+              .filter(Boolean)
+              .join(", ")}
+            .
+          </p>
+          <Link href="/health" className="text-sm font-medium hover:underline">
+            View health →
+          </Link>
+        </div>
+      ) : null}
 
       {missingPedigreeCount > 0 ? (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">

@@ -8,6 +8,8 @@ import DeleteBirdButton from "@/components/DeleteBirdButton";
 import { formatAge, formatDob } from "@/lib/dateOfBirth";
 import { SEX_LABELS } from "@/lib/sex";
 import { birdLabel } from "@/lib/pedigreeShared";
+import { dayKey, dueState, pmvStatus, recordHeading } from "@/lib/medical";
+import PmvBadge from "@/components/medical/PmvBadge";
 import { RACE_STATUS_LABELS, bestPosition, compareForPedigree, dateKey, pedigreeLine } from "@/lib/races";
 import SexIcon from "@/components/SexIcon";
 
@@ -48,6 +50,9 @@ export default async function BirdDashboardPage({
       loft: {
         select: { id: true, name: true, deletedAt: true },
       },
+      medicalRecords: {
+        select: { id: true, type: true, category: true, title: true, date: true, nextDueDate: true, reminderDone: true },
+      },
       raceResults: {
         select: { raceName: true, raceDate: true, raceType: true, status: true, clubPosition: true, fedPosition: true, openPosition: true },
       },
@@ -69,6 +74,15 @@ export default async function BirdDashboardPage({
   });
 
   const loftIsValid = !!bird.loft && bird.loft.deletedAt === null;
+
+  const medical = bird.medicalRecords
+    .map((r) => ({ ...r, date: formatDob(r.date), nextDueDate: r.nextDueDate ? formatDob(r.nextDueDate) : null }))
+    .sort((a, b) => (dayKey(b.date) ?? 0) - (dayKey(a.date) ?? 0));
+  const pmv = pmvStatus(medical);
+  const openDue = medical.filter((r) => r.nextDueDate && !r.reminderDone).map((r) => dueState(r.nextDueDate));
+  const overdueCount = openDue.filter((s) => s === "overdue").length;
+  const dueSoonCount = openDue.filter((s) => s === "due-soon").length;
+  const latestMedical = medical[0] ?? null;
 
   const races = bird.raceResults.map((r) => ({ ...r, raceDate: formatDob(r.raceDate) }));
   const raceWins = races.filter((r) => bestPosition(r) === 1).length;
@@ -268,15 +282,43 @@ export default async function BirdDashboardPage({
         )}
       </div>
 
-      {/* Coming soon */}
+      {/* Health */}
       <div className="pt-8">
-        <p className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-4">Coming soon</p>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4">
-            <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mb-1">Medical records</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Log treatments, meds, follow-ups.</p>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
+            Health <PmvBadge status={pmv} />
+          </p>
+          <Link
+            href={`/birds/${bird.id}/health`}
+            className="text-sm px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+          >
+            {medical.length ? "View medical records" : "Add medical records"}
+          </Link>
         </div>
+        {medical.length ? (
+          <dl className="grid grid-cols-2 md:grid-cols-3 gap-8">
+            <div>
+              <dt className="text-xs text-slate-400 dark:text-slate-500 mb-1">PMV vaccination</dt>
+              <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                {pmv.state === "none" ? "Not recorded" : pmv.state === "expired" ? `Expired ${pmv.validUntil}` : `Valid until ${pmv.validUntil}`}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-400 dark:text-slate-500 mb-1">Reminders</dt>
+              <dd className={`text-sm font-medium ${overdueCount ? "text-red-600 dark:text-red-300" : dueSoonCount ? "text-amber-700 dark:text-amber-300" : "text-slate-800 dark:text-slate-100"}`}>
+                {overdueCount ? `${overdueCount} overdue` : dueSoonCount ? `${dueSoonCount} due soon` : "None due"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-400 dark:text-slate-500 mb-1">Latest record</dt>
+              <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                {latestMedical ? `${recordHeading(latestMedical)}, ${latestMedical.date}` : "—"}
+              </dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="text-sm text-slate-500 dark:text-slate-400">No medical records yet.</p>
+        )}
       </div>
     </main>
   );

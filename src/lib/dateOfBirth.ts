@@ -7,8 +7,18 @@ export function parseDob(
   input: string,
   now: Date = new Date()
 ): { date: Date; error: null } | { date: null; error: string } {
+  return parseDay(input, { label: "Date of birth", now });
+}
+
+// Any dd/mm/yyyy date, stored as UTC midnight. `label` names the field in
+// error messages; future dates are rejected unless `allowFuture` is set.
+export function parseDay(
+  input: string,
+  { label, allowFuture = false, now = new Date() }: { label: string; allowFuture?: boolean; now?: Date }
+): { date: Date; error: null } | { date: null; error: string } {
+  const lower = label.charAt(0).toLowerCase() + label.slice(1);
   const match = input.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!match) return { date: null, error: "Date of birth must be in dd/mm/yyyy format." };
+  if (!match) return { date: null, error: `${label} must be in dd/mm/yyyy format.` };
 
   const [, dd, mm, yyyy] = match;
   const day = Number(dd);
@@ -22,12 +32,12 @@ export function parseDob(
     date.getUTCMonth() !== month - 1 ||
     date.getUTCDate() !== day
   ) {
-    return { date: null, error: "That date of birth doesn't exist." };
+    return { date: null, error: `That ${lower} doesn't exist.` };
   }
 
   const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  if (date.getTime() > todayUtc) {
-    return { date: null, error: "Date of birth can't be in the future." };
+  if (!allowFuture && date.getTime() > todayUtc) {
+    return { date: null, error: `${label} can't be in the future.` };
   }
 
   return { date, error: null };
@@ -37,6 +47,22 @@ export function formatDob(date: Date): string {
   const dd = String(date.getUTCDate()).padStart(2, "0");
   const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
   return `${dd}/${mm}/${date.getUTCFullYear()}`;
+}
+
+// Today's calendar date as UTC midnight, comparable with stored dates.
+export function todayUtc(now: Date = new Date()): Date {
+  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+}
+
+export function addMonths(date: Date, months: number): Date {
+  const d = new Date(date);
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  // Clamp e.g. 31 Jan + 1 month to 28/29 Feb.
+  const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, lastDay));
+  return d;
 }
 
 function plural(n: number, unit: string) {

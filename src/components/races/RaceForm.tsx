@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "@/components/Modal";
+import { dayKey, pmvCoveredOn } from "@/lib/medical";
 import {
   LEVELS,
   PEDIGREE_TOP_POSITION,
@@ -59,12 +60,14 @@ export default function RaceForm({
   birdId,
   birdLabel,
   result,
+  pmvPeriods = [],
   onClose,
   onSaved,
 }: {
   birdId: string;
   birdLabel: string;
   result: RaceResultDTO | null; // null = adding a new result
+  pmvPeriods?: { from: string; until: string }[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -151,6 +154,13 @@ export default function RaceForm({
             </div>
           </div>
         </section>
+
+        {dayKey(v.raceDate.trim()) !== null && !pmvCoveredOn(pmvPeriods, v.raceDate.trim()) ? (
+          <p className="rounded-xl border border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+            This bird has no PMV vaccination recorded that covers {v.raceDate.trim()}. A current PMV vaccination is needed for racing.
+            You can still save the result.
+          </p>
+        ) : null}
 
         <section className="space-y-4">
           <p className={sectionClass}>Timing &amp; distance</p>
